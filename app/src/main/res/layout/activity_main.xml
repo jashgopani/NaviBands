@@ -6,43 +6,63 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:gravity="center"
     tools:context=".MainActivity">
+
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:id="@+id/statustv"
+        android:textSize="32dp"
+        android:textAlignment="center"
         android:text="Monitoring off"
         />
 
-    <Button
-        android:id="@+id/openMapsBtn"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Open maps"
-        android:textAlignment="center"
-        />
+    <GridLayout
+        android:columnCount="2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
 
-    <Button
-        android:id="@+id/startServiceBtn"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Start Service"
-        android:textAlignment="center"
-        />
-    <Button
-        android:id="@+id/stopServiceBtn"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Stop Service"
-        android:textAlignment="center"
-        />
 
+        <Button
+            android:layout_columnWeight="1"
+            android:id="@+id/startServiceBtn"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Start Service"
+            android:textAlignment="center"
+            />
+        <Button
+            android:layout_columnWeight="1"
+            android:id="@+id/stopServiceBtn"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Stop Service"
+            android:textAlignment="center"
+            />
+
+
+        <Button
+            android:layout_columnWeight="1"
+            android:id="@+id/compareIconsBtn"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Compare Icons"
+            android:textAlignment="center"
+            />
+    </GridLayout>
     <ImageView
         android:id="@+id/imageIcon"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:src="@drawable/common_full_open_on_phone"
+        android:tint="@color/colorPrimary"
         />
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" >
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:id="@+id/logtv"/>
+    </ScrollView>
 
 </LinearLayout>
