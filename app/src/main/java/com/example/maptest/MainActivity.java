@@ -32,6 +32,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
@@ -41,12 +42,12 @@ import java.util.stream.IntStream;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     private static final int ERROR_DIALOG_REQUEST = 9001;
-    Button startServiceBtn, stopServiceBtn,compareIconsBtn;
+    Button startServiceBtn, stopServiceBtn, compareIconsBtn;
     ImageView imageIcon;
     TextView statustv, logtv;
-    HashSet<Integer[]> largeIcons;
+    ArrayList<int[]> largeIcons;
     BitmapDrawable previous, current;
-    Integer[] o, n;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,7 +63,7 @@ public class MainActivity extends AppCompatActivity {
         imageIcon = (ImageView) findViewById(R.id.imageIcon);
         statustv = (TextView) findViewById(R.id.statustv);
         logtv = (TextView) findViewById(R.id.logtv);
-        largeIcons = new HashSet<>();
+        largeIcons = new ArrayList<>();
 
         startServiceBtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -86,7 +87,7 @@ public class MainActivity extends AppCompatActivity {
         compareIconsBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Toast.makeText(MainActivity.this,"Compare Icons",Toast.LENGTH_SHORT);
+                Toast.makeText(MainActivity.this, "Compare Icons", Toast.LENGTH_SHORT);
             }
         });
     }
@@ -105,43 +106,55 @@ public class MainActivity extends AppCompatActivity {
 
 
             if (intent != null) {
-
+                //getting current BitmapDrawable
                 BitmapDrawable icon = (BitmapDrawable) NotificationMonitor.getIconResource();
-                current = icon;
-                Bitmap cb = icon.getBitmap();
 
+                //working with Bitmap
+                Bitmap cb = icon.getBitmap();
                 int width = cb.getWidth();
                 int height = cb.getHeight();
-                Integer[] pixels = new Integer[width * height];
+                int[] pixels = new int[width * height];
 
-                for (int i = 0; i < width; i++) {
-                    for (int j = 0; j < height; j++) {
-                        pixels[i * width + j] = cb.getPixel(i, j);
-                    }
-                }
-
-                o = n;
-                n = pixels;
+//                PixelWrapper p = new PixelWrapper(pixels);
 
                 System.out.println("--------------------------Pixels Start--------------------------------");
-                System.out.println(isUnique(n)?"Already Added":"Alag hai ");
-                if(isUnique(n)){
-                    System.out.println("Different Bitmap Saved");
-                    largeIcons.add(n);
-                    storeImage(cb);
-                }else{
+                largeIcons.add(pixels);
+                storeImage(cb);
+//                if (largeIcons.size() == 0){
+//                    largeIcons.add(pixels);
+//                    storeImage(cb);
+//                }else if (isUnique(pixels) && pixels != null) {
+//                    largeIcons.add(pixels);
+//                    storeImage(cb);
+//                    System.out.println("Pixels were Unique");
+//                } else {
+//                    System.out.println("Pixels were same");
+//                }
 
-                    System.out.println("Same Bitmap");
-                }
                 System.out.println(largeIcons.size());
                 System.out.println("--------------------------Pixels End--------------------------------");
 
 
                 imageIcon.setImageDrawable(icon);
             }
+
             logtv.setText(not + old);
         }
     };
+
+
+    private boolean isUnique(int[] a) {
+        if (a == null) return false;
+
+        for (int[] arr : largeIcons) {
+            for (int i = 0; i < arr.length; i++) {
+                if ((arr[i] - a[i]) != 0) {
+                    return true;//if a single pixel is different, then also icon is unique
+                }
+            }
+        }
+        return false;
+    }
 
     /**
      * Create a File for saving an image or video
@@ -171,27 +184,7 @@ public class MainActivity extends AppCompatActivity {
         return mediaFile;
     }
 
-    private boolean areDifferent(int[] a,int[] b){
-        if(a==null && b!=null)return true;
-        else if(b==null && a!=null)return true;
-        else if(a==null && b==null)return false;
 
-        boolean result = true;
-        for(int i=0;i<n.length;i++){
-            if(o!=null && n!=null && o[i]!=n[i])System.out.println("Difference : "+(o[i]-n[i]));
-            else return false;
-        }
-
-        return result;
-    }
-
-    private boolean isUnique(Integer[] a){
-        for(Integer[] i:largeIcons){
-            Arrays.deepEquals(i,a);
-        }
-
-        return true;
-    }
     private void storeImage(Bitmap image) {
         File pictureFile = getOutputMediaFile();
         if (pictureFile == null) {

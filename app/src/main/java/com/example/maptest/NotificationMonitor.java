@@ -74,7 +74,7 @@ public class NotificationMonitor extends NotificationListenerService {
                 msgrcv.putExtra("text", text);
 
                 //serializeIcon
-                serializeIcon(largeIcon);
+//                serializeIcon(largeIcon);
 
                 LocalBroadcastManager.getInstance(context).sendBroadcast(msgrcv);
             }
