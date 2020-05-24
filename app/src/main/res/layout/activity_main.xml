@@ -43,23 +43,36 @@
 
         <Button
             android:layout_columnWeight="1"
-            android:id="@+id/compareIconsBtn"
+            android:layout_columnSpan="2"
+            android:id="@+id/saveIconBtn"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="Compare Icons"
+            android:text="Test File Operation"
             android:textAlignment="center"
             />
+
+        <ImageView
+            android:id="@+id/imageIcon"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:tint="@color/colorPrimary"
+            android:layout_columnWeight="1"
+            android:layout_rowWeight="1"
+            android:src="@drawable/ic_launcher_foreground"
+            />
+        <TextView
+            android:layout_width="0dp"
+            android:layout_columnWeight="1"
+            android:text="The icon csv is stored at Internal Storage > MapTest > PixelData.csv"
+            />
     </GridLayout>
-    <ImageView
-        android:id="@+id/imageIcon"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:tint="@color/colorPrimary"
-        />
+
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content" >
         <TextView
+            android:text=""
+            android:gravity="center"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:id="@+id/logtv"/>

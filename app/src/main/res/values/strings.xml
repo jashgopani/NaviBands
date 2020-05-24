@@ -1,4 +1,3 @@
 <resources>
     <string name="app_name">MapTest</string>
-    <string name="google_maps_key" templateMergeStrategy="preserve" translatable="false">AIzaSyDn1-kPgFOKIgE9BgwYU_chW96DQA44Z-Y</string>
 </resources>
