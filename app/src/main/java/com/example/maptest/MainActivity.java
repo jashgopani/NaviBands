@@ -51,6 +51,7 @@ public class MainActivity extends AppCompatActivity {
     CSVWriter csvWriter;
     CSVReader csvReader;
     Context context;
+    File file;
 
 
     @Override
@@ -63,7 +64,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void init() {
         context = getApplicationContext();
-
+        openCSVFileWriter();
         startServiceBtn = findViewById(R.id.startServiceBtn);
         stopServiceBtn = findViewById(R.id.stopServiceBtn);
         compareIconsBtn = findViewById(R.id.saveIconBtn);
@@ -94,14 +95,19 @@ public class MainActivity extends AppCompatActivity {
         compareIconsBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                openCSVFileWriter();
                 writePixelToCSVFile(new String[]{"key", "Value"});
-                closeCSVFileWriter();
+                Toast.makeText(context, "Test executed", Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-    private void getPermissions(){
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        closeCSVFileWriter();
+    }
+
+    private void getPermissions() {
         //Check for Notification access
         if (Settings.Secure.getString(this.getContentResolver(), "enabled_notification_listeners").contains(getApplicationContext().getPackageName())) {
             //service is enabled do something
@@ -116,19 +122,25 @@ public class MainActivity extends AppCompatActivity {
         if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 0);
         }
+        //check location permissions & ask for it if not granted
+        if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 0);
+        }
     }
 
     private void openCSVFileWriter() {
         //open the filestream to write the PixelWrappers
-        String path = "/sdcard/MapTest/";
+        System.out.println();
+        String path = context.getExternalFilesDir(null) + File.separator;
         String csvFilename = path + "PixelData.csv";
 
         try {
-            File file = new File(path);
-            file.mkdir();//create folder if doesnt exist
+            file = new File(path);
+            boolean created = file.mkdir();//create folder if doesnt exist
             //open filestream
             csvWriter = new CSVWriter(new FileWriter(csvFilename, true));
-        } catch (IOException e) {
+            Toast.makeText(context, "File Stream Opened\n", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
@@ -137,25 +149,21 @@ public class MainActivity extends AppCompatActivity {
     private void closeCSVFileWriter() {
         try {
             csvWriter.close();
-            Toast.makeText(context, "File operation success", Toast.LENGTH_SHORT);
+            Toast.makeText(context, "File Stream CLosed\nFile operation success", Toast.LENGTH_SHORT).show();
         } catch (IOException e) {
-            Toast.makeText(context, "File operation Failure", Toast.LENGTH_SHORT);
+            Toast.makeText(context, "File operation Failure", Toast.LENGTH_SHORT).show();
             e.printStackTrace();
         }
     }
 
     private void registerBroadcastReceiver() {
         LocalBroadcastManager.getInstance(MainActivity.this).registerReceiver(onNotice, new IntentFilter("Msg"));
-        //open CSV File Writer
-        openCSVFileWriter();
         statustv.setText("Monitoring ON");
         Toast.makeText(context, "Monitoring ON", Toast.LENGTH_SHORT).show();
     }
 
     private void unregisterBroadcastReceiver() {
         LocalBroadcastManager.getInstance(MainActivity.this).unregisterReceiver(onNotice);
-        //open CSV File Writer
-        openCSVFileWriter();
         statustv.setText("Monitoring OFF");
         Toast.makeText(context, "Monitoring OFF", Toast.LENGTH_SHORT).show();
     }
@@ -173,7 +181,7 @@ public class MainActivity extends AppCompatActivity {
             String not = "\n{title : " + title + "\ntext :" + text + "\nicon_type : " + icon_type + " }\n";
 
             //update the text on screen
-            logtv.setText(old.indexOf(not)>-1?old:not);
+            logtv.setText(old.indexOf(not) > -1 ? old : not);
 
             if (intent != null) {
                 //getting current BitmapDrawable
@@ -256,12 +264,11 @@ public class MainActivity extends AppCompatActivity {
                 new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
                         String iconName = input.getText().toString().trim().toUpperCase();
-                        iconName = iconName.length()>0?iconName:"unknown";
+                        iconName = iconName.length() > 0 ? iconName : "unknown";
                         if (iconName.length() > 0) {
                             //write to file
-                            openCSVFileWriter();
+
                             writePixelToCSVFile(new String[]{iconName, compressedValue});
-                            closeCSVFileWriter();
 
                             //Register reciever again
                             registerBroadcastReceiver();
@@ -276,7 +283,16 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void writePixelToCSVFile(String[] pixelPair) {
-        csvWriter.writeNext(pixelPair);
+        if (csvWriter == null) {
+            System.out.println("Null CSVWRITER");
+            openCSVFileWriter();
+        }
+
+        try {
+            csvWriter.writeNext(pixelPair);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
 

@@ -1,81 +1,77 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
-    android:orientation="vertical"
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:orientation="vertical"
     tools:context=".MainActivity">
 
-    <TextView
+    <GridLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:id="@+id/statustv"
-        android:textSize="32dp"
-        android:textAlignment="center"
-        android:text="Monitoring off"
-        />
-
-    <GridLayout
-        android:columnCount="2"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:columnCount="2">
 
 
         <Button
-            android:layout_columnWeight="1"
             android:id="@+id/startServiceBtn"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="Start Service"
-            android:textAlignment="center"
-            />
-        <Button
             android:layout_columnWeight="1"
+            android:text="Start Service"
+            android:textAlignment="center" />
+
+        <Button
             android:id="@+id/stopServiceBtn"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_columnWeight="1"
             android:text="Stop Service"
-            android:textAlignment="center"
-            />
+            android:textAlignment="center" />
 
 
         <Button
-            android:layout_columnWeight="1"
-            android:layout_columnSpan="2"
             android:id="@+id/saveIconBtn"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_columnSpan="2"
+            android:layout_columnWeight="1"
             android:text="Test File Operation"
-            android:textAlignment="center"
-            />
+            android:textAlignment="center" />
 
         <ImageView
             android:id="@+id/imageIcon"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:tint="@color/colorPrimary"
             android:layout_columnWeight="1"
             android:layout_rowWeight="1"
             android:src="@drawable/ic_launcher_foreground"
-            />
+            android:tint="@color/colorPrimary" />
+
         <TextView
             android:layout_width="0dp"
             android:layout_columnWeight="1"
-            android:text="The icon csv is stored at Internal Storage > MapTest > PixelData.csv"
-            />
+            android:text="The icon csv is stored at Internal Storage/Android/com.example.MapTest/PixelData.csv" />
     </GridLayout>
 
     <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" >
+        android:layout_height="wrap_content">
+
         <TextView
-            android:text=""
-            android:gravity="center"
+            android:id="@+id/logtv"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:id="@+id/logtv"/>
+            android:gravity="center"
+            android:text="" />
     </ScrollView>
+
+    <TextView
+        android:id="@+id/statustv"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Monitoring off"
+        android:textAlignment="center"
+        android:textSize="32dp" />
 
 </LinearLayout>
