@@ -7,6 +7,8 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.content.res.AssetManager;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
@@ -22,18 +24,17 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.opencsv.CSVReader;
-import com.opencsv.CSVWriter;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -48,126 +49,9 @@ public class MainActivity extends AppCompatActivity {
     TextView statustv, logtv;
     HashSet<String> largeIcons;
     HashMap<PixelWrapper, Bitmap> bitmapHashMap;
-    CSVWriter csvWriter;
-    CSVReader csvReader;
     Context context;
     File file;
-
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        init();
-        getPermissions();
-    }
-
-    private void init() {
-        context = getApplicationContext();
-        openCSVFileWriter();
-        startServiceBtn = findViewById(R.id.startServiceBtn);
-        stopServiceBtn = findViewById(R.id.stopServiceBtn);
-        compareIconsBtn = findViewById(R.id.saveIconBtn);
-        imageIcon = findViewById(R.id.imageIcon);
-        statustv = findViewById(R.id.statustv);
-        logtv = findViewById(R.id.logtv);
-        largeIcons = new HashSet<>();
-        bitmapHashMap = new HashMap<>();
-
-        startServiceBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                statustv.setText("Monitoring onn");
-                //register the reciever
-                registerBroadcastReceiver();
-
-                Log.i(TAG, "clicked start");
-            }
-        });
-
-        stopServiceBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                unregisterBroadcastReceiver();
-            }
-        });
-
-        compareIconsBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                writePixelToCSVFile(new String[]{"key", "Value"});
-                Toast.makeText(context, "Test executed", Toast.LENGTH_SHORT).show();
-            }
-        });
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        closeCSVFileWriter();
-    }
-
-    private void getPermissions() {
-        //Check for Notification access
-        if (Settings.Secure.getString(this.getContentResolver(), "enabled_notification_listeners").contains(getApplicationContext().getPackageName())) {
-            //service is enabled do something
-            Log.i(TAG, "Noti access enabled");
-        } else {
-            //service is not enabled try to enabled by calling...
-            startActivity(new Intent(
-                    "android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"));
-        }
-
-        //check storage permissions & ask for it if not granted
-        if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 0);
-        }
-        //check location permissions & ask for it if not granted
-        if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 0);
-        }
-    }
-
-    private void openCSVFileWriter() {
-        //open the filestream to write the PixelWrappers
-        System.out.println();
-        String path = context.getExternalFilesDir(null) + File.separator;
-        String csvFilename = path + "PixelData.csv";
-
-        try {
-            file = new File(path);
-            boolean created = file.mkdir();//create folder if doesnt exist
-            //open filestream
-            csvWriter = new CSVWriter(new FileWriter(csvFilename, true));
-            Toast.makeText(context, "File Stream Opened\n", Toast.LENGTH_SHORT).show();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-    }
-
-    private void closeCSVFileWriter() {
-        try {
-            csvWriter.close();
-            Toast.makeText(context, "File Stream CLosed\nFile operation success", Toast.LENGTH_SHORT).show();
-        } catch (IOException e) {
-            Toast.makeText(context, "File operation Failure", Toast.LENGTH_SHORT).show();
-            e.printStackTrace();
-        }
-    }
-
-    private void registerBroadcastReceiver() {
-        LocalBroadcastManager.getInstance(MainActivity.this).registerReceiver(onNotice, new IntentFilter("Msg"));
-        statustv.setText("Monitoring ON");
-        Toast.makeText(context, "Monitoring ON", Toast.LENGTH_SHORT).show();
-    }
-
-    private void unregisterBroadcastReceiver() {
-        LocalBroadcastManager.getInstance(MainActivity.this).unregisterReceiver(onNotice);
-        statustv.setText("Monitoring OFF");
-        Toast.makeText(context, "Monitoring OFF", Toast.LENGTH_SHORT).show();
-    }
-
+    String path, csvFilename;
     private BroadcastReceiver onNotice = new BroadcastReceiver() {
 
         @Override
@@ -178,10 +62,11 @@ public class MainActivity extends AppCompatActivity {
             String icon_type = intent.getStringExtra("icon_type");
             String old = logtv.getText().toString();
 
-            String not = "\n{title : " + title + "\ntext :" + text + "\nicon_type : " + icon_type + " }\n";
+            String not = "\n{title : " + title + "\ntext :" + text + " }\n";
+            int nextTurnAfter = getTurnDistance(title);
+            if (nextTurnAfter > -1 && nextTurnAfter < 20)
+                System.out.println("next turn after : " + nextTurnAfter);
 
-            //update the text on screen
-            logtv.setText(old.indexOf(not) > -1 ? old : not);
 
             if (intent != null) {
                 //getting current BitmapDrawable
@@ -215,8 +100,12 @@ public class MainActivity extends AppCompatActivity {
                 System.out.println("--------------------------Pixels Start--------------------------------");
                 System.out.println("Zeros : " + zeroCounter);
                 System.out.println(p);
-
-                if (largeIcons.add(p.compressed)) {//if new icon detected
+                String result = IconMap.icons.get(p.compressed);
+                if (result != null) {
+                    not += "Take " + result + " " + ((nextTurnAfter > -1 && nextTurnAfter <= 20) ? nextTurnAfter : "") + "\n\n̥";
+                    Toast.makeText(context, "Match found  : " + result, Toast.LENGTH_SHORT).show();
+                    imageIcon.setImageDrawable(icon);
+                } else if (largeIcons.add(p.compressed)) {//if new icon detected
                     //display the icon
                     imageIcon.setImageDrawable(icon);
 
@@ -241,8 +130,133 @@ public class MainActivity extends AppCompatActivity {
                 System.out.println("--------------------------Pixels End--------------------------------");
 
             }
+            //update the text on screen
+            logtv.setText(not + old);
         }
     };
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        init();
+        getPermissions();
+
+        AssetManager am = getAssets();
+        Resources r = getResources();
+
+    }
+
+    private void init() {
+        context = getApplicationContext();
+
+        path = context.getExternalFilesDir(null) + File.separator;
+        csvFilename = path + "PixelData.csv";
+
+        startServiceBtn = findViewById(R.id.startServiceBtn);
+        stopServiceBtn = findViewById(R.id.stopServiceBtn);
+        compareIconsBtn = findViewById(R.id.saveIconBtn);
+        imageIcon = findViewById(R.id.imageIcon);
+        statustv = findViewById(R.id.statustv);
+        logtv = findViewById(R.id.logtv);
+        largeIcons = new HashSet<>();
+        bitmapHashMap = new HashMap<>();
+
+        startServiceBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                //open file first
+                if (CSVUtilities.openCSVFileWriter(context, path, csvFilename, true))
+                    registerBroadcastReceiver();//register broadcast recieveer
+                else
+                    Log.i(TAG, "File did not open");
+
+//                startService(new Intent(context,TempService.class));
+                statustv.setText("Monitoring onn");
+            }
+        });
+
+        stopServiceBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                //close file first
+                if (CSVUtilities.closeCSVFileWriter(context))
+                    unregisterBroadcastReceiver();//register broadcast recieveer
+                else
+                    Log.i(TAG, "File did not close");
+
+                statustv.setText("Monitoring off");
+//                stopService(new Intent(context,TempService.class));
+            }
+        });
+
+        compareIconsBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                boolean result = false;
+                if (CSVUtilities.getCsvWriter() != null) {
+                    result = CSVUtilities.writeToCSVFile(new String[]{"key", "Value"});
+                } else {
+                    result = CSVUtilities.openCSVFileWriter(context, path, csvFilename, true);
+                }
+                String msg = result ? "Test Successsful" : "Test Failed";
+                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    @Override
+    protected void onDestroy() {
+        CSVUtilities.openCSVFileWriter(context, path, csvFilename, true);
+        CSVUtilities.writeToCSVFile(new String[]{"onDestroy", new Date().toString()});
+        for (Map.Entry element : IconMap.icons.entrySet()) {
+            CSVUtilities.writeToCSVFile(new String[]{element.getKey().toString(), element.getValue().toString()});
+        }
+        CSVUtilities.closeCSVFileWriter(context);
+        super.onDestroy();
+    }
+
+    private void getPermissions() {
+        //Check for Notification access
+        if (Settings.Secure.getString(this.getContentResolver(), "enabled_notification_listeners").contains(getApplicationContext().getPackageName())) {
+            //service is enabled do something
+            Log.i(TAG, "Noti access enabled");
+        } else {
+            //service is not enabled try to enabled by calling...
+            startActivity(new Intent(
+                    "android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"));
+        }
+
+        //check storage permissions & ask for it if not granted
+        if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 0);
+        }
+        //check location permissions & ask for it if not granted
+        if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 0);
+        }
+    }
+
+    private void registerBroadcastReceiver() {
+        LocalBroadcastManager.getInstance(MainActivity.this).registerReceiver(onNotice, new IntentFilter("Msg"));
+        statustv.setText("Monitoring ON");
+        Toast.makeText(context, "Monitoring ON", Toast.LENGTH_SHORT).show();
+    }
+
+    private void unregisterBroadcastReceiver() {
+        LocalBroadcastManager.getInstance(MainActivity.this).unregisterReceiver(onNotice);
+        statustv.setText("Monitoring OFF");
+        Toast.makeText(context, "Monitoring OFF", Toast.LENGTH_SHORT).show();
+    }
+
+    private int getTurnDistance(String a) {
+
+        String pattern = "^\\d+";
+        Matcher m = (Pattern.compile(pattern)).matcher(a);
+        String res = m.find() ? m.group().trim() : "-1";
+        System.out.println("Your REGEX answer : " + Integer.parseInt(res));
+        return Integer.parseInt(res);
+    }
 
     private void showAlertDialog(String compressedValue, Drawable icon) {
 
@@ -267,8 +281,8 @@ public class MainActivity extends AppCompatActivity {
                         iconName = iconName.length() > 0 ? iconName : "unknown";
                         if (iconName.length() > 0) {
                             //write to file
-
-                            writePixelToCSVFile(new String[]{iconName, compressedValue});
+                            IconMap.icons.put(compressedValue, iconName);
+                            CSVUtilities.writeToCSVFile(new String[]{compressedValue, iconName});
 
                             //Register reciever again
                             registerBroadcastReceiver();
@@ -280,19 +294,6 @@ public class MainActivity extends AppCompatActivity {
                 });
 
         alertDialog.show();
-    }
-
-    private void writePixelToCSVFile(String[] pixelPair) {
-        if (csvWriter == null) {
-            System.out.println("Null CSVWRITER");
-            openCSVFileWriter();
-        }
-
-        try {
-            csvWriter.writeNext(pixelPair);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 
 
@@ -361,3 +362,22 @@ public class MainActivity extends AppCompatActivity {
         return bitmap;
     }
 }
+
+/* {{...}} part of code will be executed on other thread
+ * app start                                         --notif listener starts
+ * >>assume that collection of pixels exist as csv
+ * >>load that into hashmap using opencsv
+ * start service --reciver register
+ *   if(got notif)
+ *       get title,text,icon object
+ *       icon -> bitmap drawable
+ *       bitmap drawable -> bitmap
+ *       {{ bitmap -> turn binary -> bitmap
+ *       bitmap -> extract pixels
+ *       compress pixels }}
+ *       if(this compressed version exists) then ignore
+ * >>      else (this part is only for developer)
+ *           show alert
+ *               save to excel file
+ * stop service --unregister reciver
+ * */

@@ -86,11 +86,11 @@ class PixelWrapper {
                     if (curr == prev) {
                         rleCounter++;
                     } else {
-                        if (rleCounter > 1) {//if the value occurs more than once then only append the count
-                            rleString.append("(" + prev + ")");
+                        if (rleCounter > 1) {//if the value occurs more than once only then append the count
+                            rleString.append(prev);
                             rleString.append("{" + rleCounter + "}");
                         } else {//if the value occured only once dont append count
-                            rleString.append(prev);
+                            rleString.append("("+prev+")");
                         }
                         rleCounter = 1;
                     }

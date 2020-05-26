@@ -1,28 +1,36 @@
 package com.example.maptest;
 
 import android.app.Notification;
+import android.app.NotificationChannel;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.Icon;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.UserHandle;
 import android.service.notification.NotificationListenerService;
 import android.service.notification.StatusBarNotification;
 import android.util.Log;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 public class NotificationMonitor extends NotificationListenerService {
     Context context;
     static Drawable currIcon = null;
+    String notificationTitle = "";
     public static final String MAPS_PACKAGE = "com.google.android.apps.maps";
 
     @Override
     public void onCreate() {
         super.onCreate();
         context = getApplicationContext();
+
     }
+
 
     @Override
     public void onNotificationPosted(StatusBarNotification sbn) {
@@ -59,7 +67,10 @@ public class NotificationMonitor extends NotificationListenerService {
                 msgrcv.putExtra("title", title);
                 msgrcv.putExtra("text", text);
 
-                LocalBroadcastManager.getInstance(context).sendBroadcast(msgrcv);
+                if(!notificationTitle.equals(title)){
+                    notificationTitle = title;
+                    LocalBroadcastManager.getInstance(context).sendBroadcast(msgrcv);
+                }
             }
 
 
