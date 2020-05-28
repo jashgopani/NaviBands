@@ -1,28 +1,44 @@
 package com.example.maptest;
 
 import android.app.Notification;
-import android.app.NotificationChannel;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.Icon;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.UserHandle;
 import android.service.notification.NotificationListenerService;
 import android.service.notification.StatusBarNotification;
 import android.util.Log;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
+import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import static com.example.maptest.Constants.NOTIFICATION_RECEIVED;
+
 public class NotificationMonitor extends NotificationListenerService {
-    Context context;
-    static Drawable currIcon = null;
-    String notificationTitle = "";
     public static final String MAPS_PACKAGE = "com.google.android.apps.maps";
+    private static final String TAG = "NotificationMonitor";
+    static Drawable currIcon = null;
+    Context context;
+    String notificationTitle = "";
+
+    @Override
+    public void onListenerConnected() {
+        Log.d(TAG, "onListenerConnected: Connected");
+        super.onListenerConnected();
+    }
+
+    @Override
+    public void onListenerDisconnected() {
+        Log.d(TAG, "onListenerDisconnected: Disconnected");
+        super.onListenerDisconnected();
+    }
+
+    public static Drawable getIconResource() {
+        return currIcon;
+    }
 
     @Override
     public void onCreate() {
@@ -31,13 +47,13 @@ public class NotificationMonitor extends NotificationListenerService {
 
     }
 
-
+    @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
-    public void onNotificationPosted(StatusBarNotification sbn) {
+    public void onNotificationPosted(@NonNull StatusBarNotification sbn) {
         if (sbn != null) {
             String pack = sbn.getPackageName();
             //Only process notifications from google maps app
-            if(pack.equals(MAPS_PACKAGE)){
+            if (pack.equals(MAPS_PACKAGE)) {
                 //Get the notification object
                 Notification notification = sbn.getNotification();
 
@@ -45,7 +61,7 @@ public class NotificationMonitor extends NotificationListenerService {
                 Bundle extras = notification.extras;
 
                 //Extracting title and text
-                String title = extras.getString("android.title")==null?"ANDROID_TITLE_NOT_FOUND":extras.getString("android.title");
+                String title = extras.getString("android.title") == null ? "ANDROID_TITLE_NOT_FOUND" : extras.getString("android.title");
                 String text = extras.getString("android.text") == null ? "ANDROID_TEXT_NOT_FOUND" : extras.getString("android.text");
 
                 //Extracting the Icon
@@ -54,7 +70,7 @@ public class NotificationMonitor extends NotificationListenerService {
                     //Get the icon object and convert it to Drawable format if not null
                     Icon temp = notification.getLargeIcon();
 
-                    if(temp!=null){
+                    if (temp != null) {
                         largeIcon.setIcon(temp);
                         currIcon = largeIcon.getIcon().loadDrawable(getApplicationContext());
                     }
@@ -63,29 +79,24 @@ public class NotificationMonitor extends NotificationListenerService {
                 //We have all the details, send the details via intent
 
                 //Create an intent and add details
-                Intent msgrcv = new Intent("Msg");
+                Intent msgrcv = new Intent(NOTIFICATION_RECEIVED);
                 msgrcv.putExtra("title", title);
                 msgrcv.putExtra("text", text);
+                msgrcv.putExtra("icon", largeIcon.getIcon());
 
-                if(!notificationTitle.equals(title)){
+                if (!notificationTitle.equals(title)) {
                     notificationTitle = title;
+                    Log.d(TAG, "onNotificationPosted: "+title+" | "+text);
                     LocalBroadcastManager.getInstance(context).sendBroadcast(msgrcv);
                 }
             }
 
 
-        } else {
-            Log.i("MSG", "SBN Null hai");
         }
-    }
-
-    public static Drawable getIconResource(){
-        return currIcon;
     }
 
     @Override
     public void onNotificationRemoved(StatusBarNotification sbn) {
-        Log.i("Msg", "Notification Removed");
     }
 
 }

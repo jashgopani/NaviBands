@@ -12,8 +12,11 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.Icon;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
@@ -36,6 +39,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -52,15 +56,17 @@ public class MainActivity extends AppCompatActivity {
     Context context;
     File file;
     String path, csvFilename;
+
     private BroadcastReceiver onNotice = new BroadcastReceiver() {
 
+        @RequiresApi(api = Build.VERSION_CODES.M)
         @Override
         public void onReceive(Context context, Intent intent) {
             // To recieve intents from service, perform the actions of onRecieve method
             String title = intent.getStringExtra("title");
             String text = intent.getStringExtra("text");
-            String icon_type = intent.getStringExtra("icon_type");
             String old = logtv.getText().toString();
+
 
             String not = "\n{title : " + title + "\ntext :" + text + " }\n";
             int nextTurnAfter = getTurnDistance(title);
@@ -141,10 +147,6 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         init();
         getPermissions();
-
-        AssetManager am = getAssets();
-        Resources r = getResources();
-
     }
 
     private void init() {
@@ -162,6 +164,7 @@ public class MainActivity extends AppCompatActivity {
         largeIcons = new HashSet<>();
         bitmapHashMap = new HashMap<>();
 
+
         startServiceBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -171,7 +174,9 @@ public class MainActivity extends AppCompatActivity {
                 else
                     Log.i(TAG, "File did not open");
 
-//                startService(new Intent(context,TempService.class));
+                Intent intent = new Intent(context,ForegroundService.class);
+                intent.putExtra("title","NaviBands");
+                ContextCompat.startForegroundService(context,intent);
                 statustv.setText("Monitoring onn");
             }
         });
@@ -185,6 +190,7 @@ public class MainActivity extends AppCompatActivity {
                 else
                     Log.i(TAG, "File did not close");
 
+                stopService(new Intent(context,ForegroundService.class));
                 statustv.setText("Monitoring off");
 //                stopService(new Intent(context,TempService.class));
             }
