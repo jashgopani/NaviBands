@@ -5,7 +5,7 @@ import android.graphics.drawable.Icon;
 import java.io.Serializable;
 
 public class IconWrapper implements Serializable {
-    Icon icon;
+    Icon icon =null;
 
     public IconWrapper(Icon icon) {
         this.icon = icon;

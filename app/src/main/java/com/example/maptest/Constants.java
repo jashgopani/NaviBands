@@ -6,5 +6,5 @@ public class Constants {
     public static final String PIXEL_DATA = "compressedPixelString";
     public static final String DIRECTION = "directionName";
     public static final String ICON_NULL = "notificationLargeIconNull";
-
+    public static final String REROUTING = "Rerouting...";
 }

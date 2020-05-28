@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">MapTest</string>
+    <string name="dev_mode_on">Dev ON</string>
+    <string name="dev_mode_off">Dev OFF</string>
 </resources>

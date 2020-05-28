@@ -41,9 +41,18 @@
             android:id="@+id/saveIconBtn"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_columnSpan="2"
             android:layout_columnWeight="1"
             android:text="Test File Operation"
+            android:textAlignment="center" />
+
+        <ToggleButton
+            android:id="@+id/devModeBtn"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_columnWeight="1"
+            android:layout_columnSpan="1"
+            android:textOff="@string/dev_mode_off"
+            android:textOn="@string/dev_mode_on"
             android:textAlignment="center" />
 
         <ImageView

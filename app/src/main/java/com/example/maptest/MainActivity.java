@@ -10,6 +10,7 @@ import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.Icon;
@@ -21,11 +22,13 @@ import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.ToggleButton;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -39,6 +42,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import androidx.annotation.ColorInt;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -49,6 +53,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     Button startServiceBtn, stopServiceBtn, compareIconsBtn;
+    ToggleButton devModeBtn;
     ImageView imageIcon;
     TextView statustv, logtv;
     HashSet<String> largeIcons;
@@ -56,90 +61,97 @@ public class MainActivity extends AppCompatActivity {
     Context context;
     File file;
     String path, csvFilename;
+    boolean devMode=false;
 
     private BroadcastReceiver onNotice = new BroadcastReceiver() {
-
-        @RequiresApi(api = Build.VERSION_CODES.M)
         @Override
         public void onReceive(Context context, Intent intent) {
-            // To recieve intents from service, perform the actions of onRecieve method
-            String title = intent.getStringExtra("title");
-            String text = intent.getStringExtra("text");
-            String old = logtv.getText().toString();
-
-
-            String not = "\n{title : " + title + "\ntext :" + text + " }\n";
-            int nextTurnAfter = getTurnDistance(title);
-            if (nextTurnAfter > -1 && nextTurnAfter < 20)
-                System.out.println("next turn after : " + nextTurnAfter);
-
-
-            if (intent != null) {
-                //getting current BitmapDrawable
-                Drawable iconDrawable = NotificationMonitor.getIconResource();
-                BitmapDrawable icon = (BitmapDrawable) iconDrawable;
-
-                //working with Bitmap
-                Bitmap cb = turnBinary(icon.getBitmap());//remove color channels for faster calc
-                int width = cb.getWidth();
-                int height = cb.getHeight();
-                int[] pixels = new int[width * height];//create an array to store pixel values
-                int zeroCounter = 0;
-
-                //store it in PixelWrapper for comparisons
-                PixelWrapper p = new PixelWrapper();
-
-                //get pixels of Bitmap first
-                for (int i = 0; i < width; i++) {
-                    for (int j = 0; j < height; j++) {
-                        int temp = cb.getPixel(i, j);
-                        int index = i * width + j;
-                        pixels[index] = temp;
-                        p.pixels.add(pixels[index]);
-                        if (temp == 0) zeroCounter++;
-                    }
-                }
-
-                //calculate the rleString for faster comparison
-                p.compressPixels();
-
-                System.out.println("--------------------------Pixels Start--------------------------------");
-                System.out.println("Zeros : " + zeroCounter);
-                System.out.println(p);
-                String result = IconMap.icons.get(p.compressed);
-                if (result != null) {
-                    not += "Take " + result + " " + ((nextTurnAfter > -1 && nextTurnAfter <= 20) ? nextTurnAfter : "") + "\n\n̥";
-                    Toast.makeText(context, "Match found  : " + result, Toast.LENGTH_SHORT).show();
-                    imageIcon.setImageDrawable(icon);
-                } else if (largeIcons.add(p.compressed)) {//if new icon detected
-                    //display the icon
-                    imageIcon.setImageDrawable(icon);
-
-                    //for debugging
-                    System.out.println("Bitmap is unique");
-
-                    //Unregister reciever for the time being
-                    unregisterBroadcastReceiver();
-
-                    //save image as PNG for backup
-                    storeImage(cb);
-
-                    //show dialog and ask for label name
-                    showAlertDialog(p.compressed, icon);
-
-
-                } else {
-                    System.out.println("Bitmap already exists");
-                }
-
-                System.out.println("HashSet Size : " + largeIcons.size());
-                System.out.println("--------------------------Pixels End--------------------------------");
-
-            }
-            //update the text on screen
-            logtv.setText(not + old);
+            if(devMode)detectAndSaveIcons(context,intent);
+            else updateUI(context,intent);
         }
     };
+
+    private void updateUI(Context context, Intent intent) {
+    }
+
+    private void detectAndSaveIcons(Context context, Intent intent){
+        // To recieve intents from service, perform the actions of onRecieve method
+        String title = intent.getStringExtra("title");
+        String text = intent.getStringExtra("text");
+        String old = logtv.getText().toString();
+
+
+        String not = "\n{title : " + title + "\ntext :" + text + " }\n";
+        int nextTurnAfter = getTurnDistance(title);
+        if (nextTurnAfter > -1 && nextTurnAfter < 20)
+            System.out.println("next turn after : " + nextTurnAfter);
+
+
+        if (intent != null) {
+            //getting current BitmapDrawable
+            Drawable iconDrawable = NotificationMonitor.getIconResource();
+            BitmapDrawable icon = (BitmapDrawable) iconDrawable;
+
+            //working with Bitmap
+            Bitmap cb = turnBinary(icon.getBitmap());//remove color channels for faster calc
+            int width = cb.getWidth();
+            int height = cb.getHeight();
+            int[] pixels = new int[width * height];//create an array to store pixel values
+            int zeroCounter = 0;
+
+            //store it in PixelWrapper for comparisons
+            PixelWrapper p = new PixelWrapper();
+
+            //get pixels of Bitmap first
+            for (int i = 0; i < width; i++) {
+                for (int j = 0; j < height; j++) {
+                    int temp = cb.getPixel(i, j);
+                    int index = i * width + j;
+                    pixels[index] = temp;
+                    p.pixels.add(pixels[index]);
+                    if (temp == 0) zeroCounter++;
+                }
+            }
+
+            //calculate the rleString for faster comparison
+            p.compressPixels();
+
+            System.out.println("--------------------------Pixels Start--------------------------------");
+            System.out.println("Zeros : " + zeroCounter);
+            System.out.println(p);
+            String result = IconMap.icons.get(p.compressed);
+            if (result != null) {
+                not += "Take " + result + " " + ((nextTurnAfter > -1 && nextTurnAfter <= 20) ? nextTurnAfter : "") + "\n\n̥";
+                Toast.makeText(context, "Match found  : " + result, Toast.LENGTH_SHORT).show();
+                imageIcon.setImageDrawable(icon);
+            } else if (largeIcons.add(p.compressed)) {//if new icon detected
+                //display the icon
+                imageIcon.setImageDrawable(icon);
+
+                //for debugging
+                System.out.println("Bitmap is unique");
+
+                //Unregister reciever for the time being
+                unregisterBroadcastReceiver();
+
+                //save image as PNG for backup
+                storeImage(cb);
+
+                //show dialog and ask for label name
+                showAlertDialog(p.compressed, icon);
+
+
+            } else {
+                System.out.println("Bitmap already exists");
+            }
+
+            System.out.println("HashSet Size : " + largeIcons.size());
+            System.out.println("--------------------------Pixels End--------------------------------");
+
+        }
+        //update the text on screen
+        logtv.setText(not + old);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -158,6 +170,7 @@ public class MainActivity extends AppCompatActivity {
         startServiceBtn = findViewById(R.id.startServiceBtn);
         stopServiceBtn = findViewById(R.id.stopServiceBtn);
         compareIconsBtn = findViewById(R.id.saveIconBtn);
+        devModeBtn = findViewById(R.id.devModeBtn);
         imageIcon = findViewById(R.id.imageIcon);
         statustv = findViewById(R.id.statustv);
         logtv = findViewById(R.id.logtv);
@@ -207,6 +220,19 @@ public class MainActivity extends AppCompatActivity {
                 }
                 String msg = result ? "Test Successsful" : "Test Failed";
                 Toast.makeText(context, msg, Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        devModeBtn.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                devMode=isChecked;
+                if(isChecked){
+                    buttonView.setTextColor(Color.parseColor("#ff0000"));
+                }else{
+                    buttonView.setTextColor(Color.parseColor("#000000"));
+                }
+                Log.d(TAG, "onCheckedChanged: New state >>"+(devMode?"DEV ON":"DEV OFF"));
             }
         });
     }

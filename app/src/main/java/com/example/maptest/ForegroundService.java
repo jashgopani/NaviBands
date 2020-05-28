@@ -10,6 +10,7 @@ import android.content.IntentFilter;
 import android.graphics.BitmapFactory;
 import android.os.IBinder;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
@@ -20,6 +21,7 @@ import static com.example.maptest.Constants.DIRECTION;
 import static com.example.maptest.Constants.JOB_DONE;
 import static com.example.maptest.Constants.NOTIFICATION_RECEIVED;
 import static com.example.maptest.Constants.PIXEL_DATA;
+import static com.example.maptest.Constants.REROUTING;
 
 /*
  * This class is for showing notifications while service is running
@@ -29,9 +31,8 @@ public class ForegroundService extends Service {
     private static NotificationReceiver notificationReceiver = null;
     private static JobStatusReceiver jobStatusReceiver = null;
 
-    public static void vibrateBand(String pixelData) {
-        String direction = IconMap.icons.get(pixelData);
-        Log.d(TAG, "vibrateBand: " + direction == null ? "UNKNOWN DIRECTION" : direction.toUpperCase());
+    void vibrateBand(String direction){
+        showNotification(this,DIRECTION,direction);
     }
 
     @Override
@@ -52,8 +53,6 @@ public class ForegroundService extends Service {
 
         Log.d(TAG, "onStartCommand: "+title+"  |  "+text);
         showNotification(this,title,text);
-
-
         return START_NOT_STICKY;
     }
 
@@ -63,7 +62,7 @@ public class ForegroundService extends Service {
 
         Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setContentTitle(title)
-                .setContentText("Navigating : "+text)
+                .setContentText("Navigating : "+text==null?"":text)
                 .setSmallIcon(R.drawable.notification_icon)
                 .setContentIntent(pendingIntent)
                 .setOnlyAlertOnce(true)
@@ -93,7 +92,8 @@ public class ForegroundService extends Service {
         @Override
         public void onReceive(Context context, Intent intent) {
             Log.d(TAG, "onReceive:̥ "+ TAG);
-            PixelProcessingService.enqueueWork(context,intent);
+            if(!REROUTING.equals(intent.getStringExtra("type")))
+                PixelProcessingService.enqueueWork(context,intent);
         }
     }
 
@@ -103,7 +103,6 @@ public class ForegroundService extends Service {
         public void onReceive(Context context, Intent intent) {
             String direction = intent.getStringExtra(DIRECTION)==null?"UNKNOWN":intent.getStringExtra(DIRECTION);
             Log.d(TAG, "onReceive: Direction Identified as" +direction);
-
         }
     }
 

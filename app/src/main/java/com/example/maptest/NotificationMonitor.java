@@ -15,7 +15,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import static com.example.maptest.Constants.ICON_NULL;
 import static com.example.maptest.Constants.NOTIFICATION_RECEIVED;
+import static com.example.maptest.Constants.REROUTING;
 
 public class NotificationMonitor extends NotificationListenerService {
     public static final String MAPS_PACKAGE = "com.google.android.apps.maps";
@@ -60,29 +62,21 @@ public class NotificationMonitor extends NotificationListenerService {
                 //To get the title and the Description text
                 Bundle extras = notification.extras;
 
-                //Extracting title and text
+                //Extracting title, text and icon
                 String title = extras.getString("android.title") == null ? "ANDROID_TITLE_NOT_FOUND" : extras.getString("android.title");
                 String text = extras.getString("android.text") == null ? "ANDROID_TEXT_NOT_FOUND" : extras.getString("android.text");
-
-                //Extracting the Icon
-                IconWrapper largeIcon = new IconWrapper();
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    //Get the icon object and convert it to Drawable format if not null
-                    Icon temp = notification.getLargeIcon();
-
-                    if (temp != null) {
-                        largeIcon.setIcon(temp);
-                        currIcon = largeIcon.getIcon().loadDrawable(getApplicationContext());
-                    }
-                }
+                String type = REROUTING.equals(title)?REROUTING:title;
+                Icon icon = notification.getLargeIcon();
 
                 //We have all the details, send the details via intent
-
-                //Create an intent and add details
+                //Prepare an intent and add details
                 Intent msgrcv = new Intent(NOTIFICATION_RECEIVED);
+                msgrcv.putExtra("type",type);
                 msgrcv.putExtra("title", title);
                 msgrcv.putExtra("text", text);
-                msgrcv.putExtra("icon", largeIcon.getIcon());
+                if(!REROUTING.equals(type)){
+                    msgrcv.putExtra("icon",icon);
+                }
 
                 if (!notificationTitle.equals(title)) {
                     notificationTitle = title;
