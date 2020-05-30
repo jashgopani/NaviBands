@@ -12,6 +12,7 @@ public class Constants {
     public static final String PROCESSED_NOTIFICATION = "icon detected direction";
     public static final String DIRECTION_BROADCAST = "icon detected direction";
     public static final String CSV_FILENAME = "PixelData.csv";
+    public static String DEBUG_PATH = "";
 
 }
 

@@ -16,6 +16,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import static com.example.maptest.App.CHANNEL_ID;
 import static com.example.maptest.Constants.DIRECTION_BROADCAST;
+import static com.example.maptest.Constants.NOTIFICATION_RECEIVED;
 import static com.example.maptest.Constants.PROCESSED_NOTIFICATION;
 import static com.example.maptest.Constants.REROUTING;
 
@@ -29,7 +30,7 @@ public class ForegroundService extends Service {
     @Override
     public void onCreate() {
         notificationReceiver = new NotificationReceiver();
-        IntentFilter notificationIntentFilter = new IntentFilter(PROCESSED_NOTIFICATION);
+        IntentFilter notificationIntentFilter = new IntentFilter(NOTIFICATION_RECEIVED);
         LocalBroadcastManager.getInstance(this).registerReceiver(notificationReceiver, notificationIntentFilter);
     }
 
@@ -81,11 +82,7 @@ public class ForegroundService extends Service {
             Intent resultIntent = new Intent(DIRECTION_BROADCAST);
 
             //process the intent with pixel details and get result intent
-            if (!REROUTING.equals(intent.getStringExtra("type")))
-                resultIntent = PixelProcessingService.getDirection(context, intent);
-
-            //broadcast the processed result
-            LocalBroadcastManager.getInstance(context).sendBroadcast(resultIntent);
+            resultIntent = PixelProcessingService.getDirection(context, intent);
         }
     }
 

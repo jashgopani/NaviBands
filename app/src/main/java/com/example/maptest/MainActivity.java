@@ -30,11 +30,14 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import java.io.File;
 import java.util.Date;
+import java.util.Map;
 
 import static com.example.maptest.Constants.CSV_FILENAME;
 import static com.example.maptest.Constants.DIRECTION;
 import static com.example.maptest.Constants.DIRECTION_BROADCAST;
+import static com.example.maptest.Constants.ICON_NULL;
 import static com.example.maptest.Constants.PIXEL_DATA;
+import static com.example.maptest.Constants.REROUTING;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
@@ -49,24 +52,39 @@ public class MainActivity extends AppCompatActivity {
     BroadcastReceiver directionsReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
+            if(REROUTING.equals(intent.getStringExtra("type"))){
+                Log.d(TAG, "onReceive: Intent was "+REROUTING);
+                return;
+            }
+
             String title = intent.getStringExtra("title");
             String text = intent.getStringExtra("text");
             String direction = intent.getStringExtra(DIRECTION);
             String compressed = intent.getStringExtra(PIXEL_DATA);
 
-            String newData = title + "\n" + text + "\n" + direction;
+            String newData = title + "\n" + text + "\n" + direction+"\n\n";
             String oldData = logtv.getText().toString();
 
             logtv.setText(newData + oldData);
+
+            if(intent.getStringExtra(ICON_NULL).equals(true)){
+                Log.d(TAG, "onReceive: ICON_NULL received");
+                return;
+            }
 
             //convert icon to drawable
             Icon ic = intent.getParcelableExtra("icon");
             Drawable d = ic.loadDrawable(context);
             iconiv.setImageDrawable(d);
 
+
             //show save option if dev mode on
             if (devMode) {
-                showAlertDialog(compressed, d);
+                if (!IconMap.icons.containsKey(compressed)){
+                    unregisterReceiver();
+                    showAlertDialog(compressed, d,MainActivity.this);
+                    registerReceiver();
+                }
             }
         }
     };
@@ -89,6 +107,7 @@ public class MainActivity extends AppCompatActivity {
     private void initializeVariables() {
         context = getApplicationContext();
         PATH = context.getExternalFilesDir(null).getAbsolutePath() + File.separator;
+        Constants.DEBUG_PATH = PATH;
         filename = PATH + CSV_FILENAME;
         monitoringMode = false;
     }
@@ -100,6 +119,23 @@ public class MainActivity extends AppCompatActivity {
         logtv = findViewById(R.id.logtv);
         statustv = findViewById(R.id.statustv);
         iconiv = findViewById(R.id.imageIcon);
+    }
+
+    @Override
+    protected void onDestroy() {
+
+        writeIconsMapToCSV();
+        super.onDestroy();
+
+    }
+
+    private void writeIconsMapToCSV() {
+        if (!devMode)openFileStream();
+        //writing HashMap to csv file
+        for (Map.Entry element : IconMap.icons.entrySet()) {
+            CSVUtilities.writeToCSVFile(new String[]{element.getKey().toString(), element.getValue().toString()});
+        }
+        closeFileStream();
     }
 
     private void addEventListeners() {
@@ -135,6 +171,7 @@ public class MainActivity extends AppCompatActivity {
                 } else {
                     //monitoring is off
                     res = closeFileStream();
+                    writeIconsMapToCSV();
                     Log.d(TAG, "toggleDevModeBtn: Close file stream : " + res);
                 }
             }
@@ -150,7 +187,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setStatustv() {
-        statustv.setText(monitoringMode ? "Monitoring ON" : "Monitoring OFF");
+        statustv.setText(monitoringMode ? R.string.monitoring_on : R.string.monitoring_off);
     }
 
     private void getPermissions() {
@@ -179,7 +216,6 @@ public class MainActivity extends AppCompatActivity {
         intent.putExtra("title", "NaviBands");
         intent.putExtra("text", "Navigation Mode ON");
         ContextCompat.startForegroundService(context, intent);
-        statustv.setText(R.string.monitoring_off);
         Log.d(TAG, "startMonitoringService: " + R.string.monitoring_on);
     }
 
@@ -220,7 +256,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void showAlertDialog(String compressedValue, Drawable icon) {
+    private void showAlertDialog(String compressedValue, Drawable icon,Context context) {
 
         AlertDialog.Builder alertDialog = new AlertDialog.Builder(context);
         alertDialog.setTitle("New Icon");

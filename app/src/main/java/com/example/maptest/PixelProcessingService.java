@@ -31,12 +31,16 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.JobIntentService;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import static com.example.maptest.Constants.CSV_FILENAME;
+import static com.example.maptest.Constants.DEBUG_PATH;
 import static com.example.maptest.Constants.DIRECTION;
 import static com.example.maptest.Constants.DIRECTION_BROADCAST;
 import static com.example.maptest.Constants.ICON_NULL;
 import static com.example.maptest.Constants.JOB_DONE;
+import static com.example.maptest.Constants.NOTIFICATION_RECEIVED;
 import static com.example.maptest.Constants.PIXEL_DATA;
 import static com.example.maptest.Constants.PROCESSED_NOTIFICATION;
+import static com.example.maptest.Constants.REROUTING;
 
 public class PixelProcessingService{
     private static final String TAG = "PixelProcessingService";
@@ -62,6 +66,9 @@ public class PixelProcessingService{
 
     //Main processing of Icons
     protected static Intent getDirection(Context context, @NonNull Intent intent) {
+        if (REROUTING.equals(intent.getStringExtra("type")))
+            return new Intent(DIRECTION_BROADCAST).putExtra("type",REROUTING);
+
         Log.d(TAG, "getDirection: Handling work");
         String title = intent.getStringExtra("title");
         String text = intent.getStringExtra("text");
@@ -106,6 +113,11 @@ public class PixelProcessingService{
         //calculate the rleString for faster comparison
         p.compressPixels();
 
+        //debug write array of pixels to file
+        CSVUtilities.openCSVFileWriter(context,DEBUG_PATH,DEBUG_PATH+CSV_FILENAME,true);
+        CSVUtilities.writeToCSVFile(new String[]{title+" | "+cb.getGenerationId(),p.pixels.toString()});
+        CSVUtilities.closeCSVFileWriter(context);
+
         //get the direction name
         String direction = IconMap.icons.get(p.compressed);
 
@@ -121,71 +133,12 @@ public class PixelProcessingService{
         jobDoneIntent.putExtra(DIRECTION,direction);
         jobDoneIntent.putExtra(PIXEL_DATA,p.compressed);
         jobDoneIntent.putExtra("icon",ic);
+        jobDoneIntent.putExtra(ICON_NULL,ic==null?"true":"false");
+        jobDoneIntent.putExtra("type",NOTIFICATION_RECEIVED);
+        LocalBroadcastManager.getInstance(context).sendBroadcast(jobDoneIntent);
         return jobDoneIntent;
     }
 
-    //Main processing of Icons and Storing to CSV File
-    protected static Intent getDirectionDevMode(Context context, @NonNull Intent intent) {
-        Log.d(TAG, "getDirection: Handling work");
-        String title = intent.getStringExtra("title");
-        String text = intent.getStringExtra("text");
-
-        Icon ic = (Icon)intent.getParcelableExtra("icon");
-        if(ic==null){
-            Log.d(TAG, "getDirection: Icon Null , Stopping work");
-            return null;
-        }
-
-        Drawable d = ic.loadDrawable(context);
-        BitmapDrawable icon = (BitmapDrawable) d;
-
-        long start_time = System.nanoTime();
-
-        //working with Bitmap
-        Bitmap cbOriginal = turnBinary(icon.getBitmap());//remove color channels for faster calc
-        Log.d(TAG, "getDirection: Original Image ID : "+cbOriginal.getGenerationId());
-        int width = cbOriginal.getWidth();
-        int height = cbOriginal.getHeight();
-        float scaleWidth = width/100f;
-        float scaleHeight = height/100f;
-        Matrix matrix = new Matrix();
-        matrix.setScale(scaleWidth,scaleHeight,width/2f,height/2f);
-
-        Bitmap cb = Bitmap.createBitmap(cbOriginal, 0, 0,
-                100,100, matrix, true);
-
-        storeImage(cb,context);
-        //store it in PixelWrapper for comparisons
-        PixelWrapper p = new PixelWrapper();
-
-        //get pixels of Bitmap first
-        for (int i = 0; i < width; i++) {
-            for (int j = 0; j < height; j++) {
-                int temp = cb.getPixel(i, j);
-                p.pixels.add(temp);
-            }
-        }
-
-        //calculate the rleString for faster comparison
-        p.compressPixels();
-
-        //get the direction name
-        String direction = IconMap.icons.get(p.compressed);
-
-        long end_time = System.nanoTime();
-        double difference = (end_time - start_time) / 1e6;
-        Log.d(TAG, "getDirection: Processing time "+ difference);
-
-        //broadcast job done intent
-        Log.d(TAG, "getDirection: Workdone "+ direction);
-        Intent jobDoneIntent = new Intent(PROCESSED_NOTIFICATION);
-        jobDoneIntent.putExtra("title",title);//notification title
-        jobDoneIntent.putExtra("text",text);//notification text
-        jobDoneIntent.putExtra(DIRECTION,direction);//detected direection
-        jobDoneIntent.putExtra(PIXEL_DATA,p.compressed);//compressed pixel data
-        jobDoneIntent.putExtra("icon",ic);//Icon object
-        return jobDoneIntent;
-    }
     //Create a File for saving an image or video
     private static File getOutputMediaFile(Context context) {
         // To be safe, you should check that the SDCard is mounted
