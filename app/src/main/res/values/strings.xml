@@ -1,5 +1,9 @@
 <resources>
     <string name="app_name">MapTest</string>
-    <string name="dev_mode_on">Dev ON</string>
-    <string name="dev_mode_off">Dev OFF</string>
+    <string name="dev_mode_on">Dev Mode is ON</string>
+    <string name="dev_mode_off">Dev Mode is OFF</string>
+    <string name="monitoring_on">Monitoring is ON</string>
+    <string name="monitoring_off">Monitoring is OFF</string>
+    <string name="debug_file_success">Debug Operation Successful</string>
+    <string name="debug_file_failure">File debug operation failed</string>
 </resources>

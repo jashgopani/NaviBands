@@ -7,17 +7,9 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
-import android.content.res.AssetManager;
-import android.content.res.Resources;
-import android.graphics.Bitmap;
-import android.graphics.Color;
-import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.Icon;
-import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
-import android.os.Handler;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
@@ -30,235 +22,138 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import androidx.annotation.ColorInt;
-import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import java.io.File;
+import java.util.Date;
+
+import static com.example.maptest.Constants.CSV_FILENAME;
+import static com.example.maptest.Constants.DIRECTION;
+import static com.example.maptest.Constants.DIRECTION_BROADCAST;
+import static com.example.maptest.Constants.PIXEL_DATA;
+
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
-    Button startServiceBtn, stopServiceBtn, compareIconsBtn;
-    ToggleButton devModeBtn;
-    ImageView imageIcon;
-    TextView statustv, logtv;
-    HashSet<String> largeIcons;
-    HashMap<PixelWrapper, Bitmap> bitmapHashMap;
-    Context context;
-    File file;
-    String path, csvFilename;
-    boolean devMode=false;
-
-    private BroadcastReceiver onNotice = new BroadcastReceiver() {
+    public static String PATH = null;
+    private static Context context;
+    ToggleButton toggleMonitoringBtn, toggleDevModeBtn;
+    Button debugFileBtn;
+    TextView logtv, statustv;
+    ImageView iconiv;
+    boolean devMode, monitoringMode;
+    String filename;
+    BroadcastReceiver directionsReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if(devMode)detectAndSaveIcons(context,intent);
-            else updateUI(context,intent);
+            String title = intent.getStringExtra("title");
+            String text = intent.getStringExtra("text");
+            String direction = intent.getStringExtra(DIRECTION);
+            String compressed = intent.getStringExtra(PIXEL_DATA);
+
+            String newData = title + "\n" + text + "\n" + direction;
+            String oldData = logtv.getText().toString();
+
+            logtv.setText(newData + oldData);
+
+            //convert icon to drawable
+            Icon ic = intent.getParcelableExtra("icon");
+            Drawable d = ic.loadDrawable(context);
+            iconiv.setImageDrawable(d);
+
+            //show save option if dev mode on
+            if (devMode) {
+                showAlertDialog(compressed, d);
+            }
         }
     };
-
-    private void updateUI(Context context, Intent intent) {
-    }
-
-    private void detectAndSaveIcons(Context context, Intent intent){
-        // To recieve intents from service, perform the actions of onRecieve method
-        String title = intent.getStringExtra("title");
-        String text = intent.getStringExtra("text");
-        String old = logtv.getText().toString();
-
-
-        String not = "\n{title : " + title + "\ntext :" + text + " }\n";
-        int nextTurnAfter = getTurnDistance(title);
-        if (nextTurnAfter > -1 && nextTurnAfter < 20)
-            System.out.println("next turn after : " + nextTurnAfter);
-
-
-        if (intent != null) {
-            //getting current BitmapDrawable
-            Drawable iconDrawable = NotificationMonitor.getIconResource();
-            BitmapDrawable icon = (BitmapDrawable) iconDrawable;
-
-            //working with Bitmap
-            Bitmap cb = turnBinary(icon.getBitmap());//remove color channels for faster calc
-            int width = cb.getWidth();
-            int height = cb.getHeight();
-            int[] pixels = new int[width * height];//create an array to store pixel values
-            int zeroCounter = 0;
-
-            //store it in PixelWrapper for comparisons
-            PixelWrapper p = new PixelWrapper();
-
-            //get pixels of Bitmap first
-            for (int i = 0; i < width; i++) {
-                for (int j = 0; j < height; j++) {
-                    int temp = cb.getPixel(i, j);
-                    int index = i * width + j;
-                    pixels[index] = temp;
-                    p.pixels.add(pixels[index]);
-                    if (temp == 0) zeroCounter++;
-                }
-            }
-
-            //calculate the rleString for faster comparison
-            p.compressPixels();
-
-            System.out.println("--------------------------Pixels Start--------------------------------");
-            System.out.println("Zeros : " + zeroCounter);
-            System.out.println(p);
-            String result = IconMap.icons.get(p.compressed);
-            if (result != null) {
-                not += "Take " + result + " " + ((nextTurnAfter > -1 && nextTurnAfter <= 20) ? nextTurnAfter : "") + "\n\n̥";
-                Toast.makeText(context, "Match found  : " + result, Toast.LENGTH_SHORT).show();
-                imageIcon.setImageDrawable(icon);
-            } else if (largeIcons.add(p.compressed)) {//if new icon detected
-                //display the icon
-                imageIcon.setImageDrawable(icon);
-
-                //for debugging
-                System.out.println("Bitmap is unique");
-
-                //Unregister reciever for the time being
-                unregisterBroadcastReceiver();
-
-                //save image as PNG for backup
-                storeImage(cb);
-
-                //show dialog and ask for label name
-                showAlertDialog(p.compressed, icon);
-
-
-            } else {
-                System.out.println("Bitmap already exists");
-            }
-
-            System.out.println("HashSet Size : " + largeIcons.size());
-            System.out.println("--------------------------Pixels End--------------------------------");
-
-        }
-        //update the text on screen
-        logtv.setText(not + old);
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         init();
-        getPermissions();
     }
 
     private void init() {
+        initializeVariables();
+        findViews();
+        addEventListeners();
+        getPermissions();
+        setStatustv();
+    }
+
+    private void initializeVariables() {
         context = getApplicationContext();
+        PATH = context.getExternalFilesDir(null).getAbsolutePath() + File.separator;
+        filename = PATH + CSV_FILENAME;
+        monitoringMode = false;
+    }
 
-        path = context.getExternalFilesDir(null) + File.separator;
-        csvFilename = path + "PixelData.csv";
-
-        startServiceBtn = findViewById(R.id.startServiceBtn);
-        stopServiceBtn = findViewById(R.id.stopServiceBtn);
-        compareIconsBtn = findViewById(R.id.saveIconBtn);
-        devModeBtn = findViewById(R.id.devModeBtn);
-        imageIcon = findViewById(R.id.imageIcon);
-        statustv = findViewById(R.id.statustv);
+    private void findViews() {
+        toggleMonitoringBtn = findViewById(R.id.toggleMonitoringBtn);
+        toggleDevModeBtn = findViewById(R.id.toggleDevModeBtn);
+        debugFileBtn = findViewById(R.id.debugFileBtn);
         logtv = findViewById(R.id.logtv);
-        largeIcons = new HashSet<>();
-        bitmapHashMap = new HashMap<>();
+        statustv = findViewById(R.id.statustv);
+        iconiv = findViewById(R.id.imageIcon);
+    }
 
-
-        startServiceBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                //open file first
-                if (CSVUtilities.openCSVFileWriter(context, path, csvFilename, true))
-                    registerBroadcastReceiver();//register broadcast recieveer
-                else
-                    Log.i(TAG, "File did not open");
-
-                Intent intent = new Intent(context,ForegroundService.class);
-                intent.putExtra("title","NaviBands");
-                ContextCompat.startForegroundService(context,intent);
-                statustv.setText("Monitoring onn");
-            }
-        });
-
-        stopServiceBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                //close file first
-                if (CSVUtilities.closeCSVFileWriter(context))
-                    unregisterBroadcastReceiver();//register broadcast recieveer
-                else
-                    Log.i(TAG, "File did not close");
-
-                stopService(new Intent(context,ForegroundService.class));
-                statustv.setText("Monitoring off");
-//                stopService(new Intent(context,TempService.class));
-            }
-        });
-
-        compareIconsBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                boolean result = false;
-                if (CSVUtilities.getCsvWriter() != null) {
-                    result = CSVUtilities.writeToCSVFile(new String[]{"key", "Value"});
-                } else {
-                    result = CSVUtilities.openCSVFileWriter(context, path, csvFilename, true);
-                }
-                String msg = result ? "Test Successsful" : "Test Failed";
-                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show();
-            }
-        });
-
-        devModeBtn.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+    private void addEventListeners() {
+        toggleMonitoringBtn.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                devMode=isChecked;
-                if(isChecked){
-                    buttonView.setTextColor(Color.parseColor("#ff0000"));
-                }else{
-                    buttonView.setTextColor(Color.parseColor("#000000"));
+                monitoringMode = isChecked;
+                setStatustv();
+                if (isChecked) {
+                    //monitoring is on
+                    startMonitoringService();
+                    registerReceiver();
+                } else {
+                    //monitoring is off
+                    statustv.setText(R.string.monitoring_off);
+                    stopMonitoringService();
+                    unregisterReceiver();
                 }
-                Log.d(TAG, "onCheckedChanged: New state >>"+(devMode?"DEV ON":"DEV OFF"));
+            }
+        });
+
+        toggleDevModeBtn.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                //update devMode
+                devMode = isChecked;
+                boolean res = false;
+
+                if (isChecked) {
+                    //monitoring is on
+                    res = openFileStream();
+                    Log.d(TAG, "toggleDevModeBtn: Open file stream : " + res);
+                } else {
+                    //monitoring is off
+                    res = closeFileStream();
+                    Log.d(TAG, "toggleDevModeBtn: Close file stream : " + res);
+                }
+            }
+        });
+
+        debugFileBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                //perform file write operation
+                debugFileOperation();
             }
         });
     }
 
-    @Override
-    protected void onDestroy() {
-        CSVUtilities.openCSVFileWriter(context, path, csvFilename, true);
-        CSVUtilities.writeToCSVFile(new String[]{"onDestroy", new Date().toString()});
-        for (Map.Entry element : IconMap.icons.entrySet()) {
-            CSVUtilities.writeToCSVFile(new String[]{element.getKey().toString(), element.getValue().toString()});
-        }
-        CSVUtilities.closeCSVFileWriter(context);
-        super.onDestroy();
+    private void setStatustv() {
+        statustv.setText(monitoringMode ? "Monitoring ON" : "Monitoring OFF");
     }
 
     private void getPermissions() {
-        //Check for Notification access
-        if (Settings.Secure.getString(this.getContentResolver(), "enabled_notification_listeners").contains(getApplicationContext().getPackageName())) {
-            //service is enabled do something
-            Log.i(TAG, "Noti access enabled");
-        } else {
-            //service is not enabled try to enabled by calling...
-            startActivity(new Intent(
-                    "android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"));
-        }
-
         //check storage permissions & ask for it if not granted
         if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 0);
@@ -267,38 +162,72 @@ public class MainActivity extends AppCompatActivity {
         if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 0);
         }
+
+        //Check for Notification access
+        if (Settings.Secure.getString(this.getContentResolver(), "enabled_notification_listeners").contains(getApplicationContext().getPackageName())) {
+            //service is enabled do something
+            Log.d(TAG, "Notification access enabled");
+        } else {
+            //service is not enabled try to enabled by calling...
+            startActivity(new Intent(
+                    "android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"));
+        }
     }
 
-    private void registerBroadcastReceiver() {
-        LocalBroadcastManager.getInstance(MainActivity.this).registerReceiver(onNotice, new IntentFilter("Msg"));
-        statustv.setText("Monitoring ON");
-        Toast.makeText(context, "Monitoring ON", Toast.LENGTH_SHORT).show();
+    private void startMonitoringService() {
+        Intent intent = new Intent(context, ForegroundService.class);
+        intent.putExtra("title", "NaviBands");
+        intent.putExtra("text", "Navigation Mode ON");
+        ContextCompat.startForegroundService(context, intent);
+        statustv.setText(R.string.monitoring_off);
+        Log.d(TAG, "startMonitoringService: " + R.string.monitoring_on);
     }
 
-    private void unregisterBroadcastReceiver() {
-        LocalBroadcastManager.getInstance(MainActivity.this).unregisterReceiver(onNotice);
-        statustv.setText("Monitoring OFF");
-        Toast.makeText(context, "Monitoring OFF", Toast.LENGTH_SHORT).show();
+    private void stopMonitoringService() {
+        stopService(new Intent(context, ForegroundService.class));
+        statustv.setText(R.string.monitoring_off);
+        Log.d(TAG, "stopMonitoringService: " + R.string.monitoring_off);
     }
 
-    private int getTurnDistance(String a) {
+    private void registerReceiver() {
+        LocalBroadcastManager.getInstance(context).registerReceiver(directionsReceiver, new IntentFilter(DIRECTION_BROADCAST));
+        Log.d(TAG, "registerReceiver: DIRECTION_BROADCAST registered");
+    }
 
-        String pattern = "^\\d+";
-        Matcher m = (Pattern.compile(pattern)).matcher(a);
-        String res = m.find() ? m.group().trim() : "-1";
-        System.out.println("Your REGEX answer : " + Integer.parseInt(res));
-        return Integer.parseInt(res);
+    private void unregisterReceiver() {
+        LocalBroadcastManager.getInstance(context).registerReceiver(directionsReceiver, new IntentFilter(DIRECTION_BROADCAST));
+        Log.d(TAG, "unregisterReceiver: DIRECTION_BROADCAST unregistered");
+    }
+
+    private boolean openFileStream() {
+        return CSVUtilities.openCSVFileWriter(context, PATH, filename, true);
+    }
+
+    private boolean closeFileStream() {
+        return CSVUtilities.closeCSVFileWriter(context);
+    }
+
+    private void debugFileOperation() {
+        try {
+            openFileStream();
+            CSVUtilities.writeToCSVFile(new String[]{new Date().toString(), "" + R.string.debug_file_success});
+            closeFileStream();
+            Toast.makeText(context, R.string.debug_file_success, Toast.LENGTH_SHORT).show();
+            Log.d(TAG, "debugFileOperation: SUCCESS");
+        } catch (Exception e) {
+            Toast.makeText(context, R.string.debug_file_failure, Toast.LENGTH_SHORT).show();
+            Log.d(TAG, "debugFileOperation: FAILURE");
+        }
     }
 
     private void showAlertDialog(String compressedValue, Drawable icon) {
 
-
-        AlertDialog.Builder alertDialog = new AlertDialog.Builder(MainActivity.this);
+        AlertDialog.Builder alertDialog = new AlertDialog.Builder(context);
         alertDialog.setTitle("New Icon");
         alertDialog.setMessage("Enter Icon Name");
         alertDialog.setCancelable(false);
 
-        final EditText input = new EditText(MainActivity.this);
+        final EditText input = new EditText(context);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.MATCH_PARENT);
@@ -315,101 +244,13 @@ public class MainActivity extends AppCompatActivity {
                             //write to file
                             IconMap.icons.put(compressedValue, iconName);
                             CSVUtilities.writeToCSVFile(new String[]{compressedValue, iconName});
-
-                            //Register reciever again
-                            registerBroadcastReceiver();
                         } else {
 
-                            Toast.makeText(MainActivity.this, "Enter valid name", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(context, "Enter valid name", Toast.LENGTH_SHORT).show();
                         }
                     }
                 });
 
         alertDialog.show();
     }
-
-
-    //Create a File for saving an image or video
-    private File getOutputMediaFile() {
-        // To be safe, you should check that the SDCard is mounted
-        // using Environment.getExternalStorageState() before doing this.
-        File mediaStorageDir = new File(Environment.getExternalStorageDirectory()
-                + "/Android/data/"
-                + getApplicationContext().getPackageName()
-                + "/Files");
-
-        // This location works best if you want the created images to be shared
-        // between applications and persist after your app has been uninstalled.
-
-        // Create the storage directory if it does not exist
-        if (!mediaStorageDir.exists()) {
-            if (!mediaStorageDir.mkdirs()) {
-                return null;
-            }
-        }
-        // Create a media file name
-        String timeStamp = new SimpleDateFormat("ddMMyyyy_HHmmss").format(new Date());
-        File mediaFile;
-        String mImageName = "MI_" + timeStamp + ".jpg";
-        mediaFile = new File(mediaStorageDir.getPath() + File.separator + mImageName);
-        return mediaFile;
-    }
-
-    //Write the bitmap to filesystem as a image
-    private void storeImage(Bitmap image) {
-        File pictureFile = getOutputMediaFile();
-        if (pictureFile == null) {
-            Log.d(TAG,
-                    "Error creating media file, check storage permissions: ");// e.getMessage());
-            return;
-        }
-        try {
-            FileOutputStream fos = new FileOutputStream(pictureFile);
-            image.compress(Bitmap.CompressFormat.PNG, 100, fos);
-            fos.close();
-            Log.i(TAG, "Image saved successfully");
-        } catch (FileNotFoundException e) {
-            Log.d(TAG, "File not found: " + e.getMessage());
-        } catch (IOException e) {
-            Log.d(TAG, "Error accessing file: " + e.getMessage());
-        }
-    }
-
-    //remove rgb channels from bitmap
-    public Bitmap turnBinary(Bitmap origin) {
-        int width = origin.getWidth();
-        int height = origin.getHeight();
-        Bitmap bitmap = origin.copy(Bitmap.Config.ARGB_8888, true);
-        for (int i = 0; i < width; i++) {
-            for (int j = 0; j < height; j++) {
-                int col = bitmap.getPixel(i, j);
-                int alpha = (col & 0xFF000000) >> 24;
-                int red = (col & 0x00FF0000);
-                int green = (col & 0x0000FF00) >> 8;
-                int blue = (col & 0x000000FF) >> 16;
-                int newColor = alpha | blue | green | red;
-                bitmap.setPixel(i, j, newColor);
-            }
-        }
-        return bitmap;
-    }
 }
-
-/* {{...}} part of code will be executed on other thread
- * app start                                         --notif listener starts
- * >>assume that collection of pixels exist as csv
- * >>load that into hashmap using opencsv
- * start service --reciver register
- *   if(got notif)
- *       get title,text,icon object
- *       icon -> bitmap drawable
- *       bitmap drawable -> bitmap
- *       {{ bitmap -> turn binary -> bitmap
- *       bitmap -> extract pixels
- *       compress pixels }}
- *       if(this compressed version exists) then ignore
- * >>      else (this part is only for developer)
- *           show alert
- *               save to excel file
- * stop service --unregister reciver
- * */

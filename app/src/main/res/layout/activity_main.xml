@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    xmlns:debug="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
     tools:context=".MainActivity">
 
@@ -10,7 +11,7 @@
         android:id="@+id/statustv"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Monitoring off"
+        android:text="debug"
         android:textAlignment="center"
         android:textSize="32dp" />
 
@@ -20,33 +21,19 @@
         android:columnCount="2">
 
 
-        <Button
-            android:id="@+id/startServiceBtn"
+        <ToggleButton
+            android:id="@+id/toggleMonitoringBtn"
             android:layout_width="0dp"
+            android:textOn="@string/monitoring_on"
+            android:textOff="@string/monitoring_off"
             android:layout_height="wrap_content"
             android:layout_columnWeight="1"
             android:text="Start Service"
             android:textAlignment="center" />
 
-        <Button
-            android:id="@+id/stopServiceBtn"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_columnWeight="1"
-            android:text="Stop Service"
-            android:textAlignment="center" />
-
-
-        <Button
-            android:id="@+id/saveIconBtn"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_columnWeight="1"
-            android:text="Test File Operation"
-            android:textAlignment="center" />
 
         <ToggleButton
-            android:id="@+id/devModeBtn"
+            android:id="@+id/toggleDevModeBtn"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_columnWeight="1"
@@ -54,6 +41,16 @@
             android:textOff="@string/dev_mode_off"
             android:textOn="@string/dev_mode_on"
             android:textAlignment="center" />
+
+        <Button
+            android:id="@+id/debugFileBtn"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_columnWeight="1"
+            android:layout_columnSpan="2"
+            android:text="Test File Operation"
+            android:textAlignment="center" />
+
 
         <ImageView
             android:id="@+id/imageIcon"
