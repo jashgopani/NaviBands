@@ -7,10 +7,12 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.Build;
 import android.os.IBinder;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
@@ -26,20 +28,30 @@ import static com.example.maptest.Constants.REROUTING;
 public class ForegroundService extends Service {
     private static final String TAG = "ForegroundService";
     private static NotificationReceiver notificationReceiver = null;
+    Context context;
+
+    BroadcastReceiver test = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            Log.d(TAG, "onReceive: Test received Notification");
+        }
+    };
 
     @Override
     public void onCreate() {
+        Log.d(TAG, "onCreate: Created Foreground Service");
+        context = getApplicationContext();
         notificationReceiver = new NotificationReceiver();
-        IntentFilter notificationIntentFilter = new IntentFilter(NOTIFICATION_RECEIVED);
-        LocalBroadcastManager.getInstance(this).registerReceiver(notificationReceiver, notificationIntentFilter);
+        IntentFilter notificationIntentFilter = new IntentFilter(NOTIFICATION_RECEIVED);//NOTIFICATION_RECEIVED
+        LocalBroadcastManager.getInstance(context).registerReceiver(notificationReceiver, notificationIntentFilter);
+        context.registerReceiver(test, notificationIntentFilter);
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        Log.d(TAG, "onStartCommand: Started Foreground Service");
         String title = intent.getStringExtra("title");
         String text = intent.getStringExtra("text");
-
-        Log.d(TAG, "onStartCommand: " + title + "  |  " + text);
         showNotification(this, title, text);
         return START_NOT_STICKY;
     }
@@ -62,8 +74,9 @@ public class ForegroundService extends Service {
 
     @Override
     public void onDestroy() {
-        Log.d(TAG, "onDestroy: Destroying service");
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(notificationReceiver);
+        Log.d(TAG, "onDestroy: Destroying Foreground service");
+//        LocalBroadcastManager.getInstance(context).unregisterReceiver(notificationReceiver);
+        context.unregisterReceiver(test);
         super.onDestroy();
     }
 
@@ -79,10 +92,11 @@ public class ForegroundService extends Service {
 
         @Override
         public void onReceive(Context context, Intent intent) {
-            Intent resultIntent = new Intent(DIRECTION_BROADCAST);
+            Log.d(TAG, "onReceive: Received NOTIFICATION_RECEIVED intent");
 
             //process the intent with pixel details and get result intent
-            resultIntent = PixelProcessingService.getDirection(context, intent);
+            PixelProcessingService.getDirection(context, intent);
+
         }
     }
 

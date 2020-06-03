@@ -1,75 +1,73 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+
+<GridLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    xmlns:debug="http://schemas.android.com/apk/res-auto"
-    android:orientation="vertical"
+    android:layout_gravity="center"
+    android:animateLayoutChanges="true"
+    android:columnCount="2"
     tools:context=".MainActivity">
 
     <TextView
         android:id="@+id/statustv"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_columnSpan="2"
+        android:layout_columnWeight="1"
         android:text="debug"
         android:textAlignment="center"
         android:textSize="32dp" />
 
-    <GridLayout
-        android:layout_width="match_parent"
+    <ToggleButton
+        android:id="@+id/toggleMonitoringBtn"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:columnCount="2">
+        android:layout_columnWeight="1"
+        android:text="Start Service"
+        android:textAlignment="center"
+        android:textOff="@string/monitoring_off"
+        android:textOn="@string/monitoring_on" />
 
 
-        <ToggleButton
-            android:id="@+id/toggleMonitoringBtn"
-            android:layout_width="0dp"
-            android:textOn="@string/monitoring_on"
-            android:textOff="@string/monitoring_off"
-            android:layout_height="wrap_content"
-            android:layout_columnWeight="1"
-            android:text="Start Service"
-            android:textAlignment="center" />
+    <Button
+        android:id="@+id/debugFileBtn"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_columnWeight="1"
+        android:text="Test File Operation"
+        android:textAlignment="center" />
 
 
-        <ToggleButton
-            android:id="@+id/toggleDevModeBtn"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_columnWeight="1"
-            android:layout_columnSpan="1"
-            android:textOff="@string/dev_mode_off"
-            android:textOn="@string/dev_mode_on"
-            android:textAlignment="center" />
+    <ImageView
+        android:id="@+id/imageIcon"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_columnWeight="1"
+        android:src="@drawable/ic_launcher_foreground"
+        android:tint="@color/colorPrimary" />
 
-        <Button
-            android:id="@+id/debugFileBtn"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_columnWeight="1"
-            android:layout_columnSpan="2"
-            android:text="Test File Operation"
-            android:textAlignment="center" />
+    <TextView
+        android:layout_width="0dp"
+        android:layout_columnWeight="1"
+        android:text="The icon csv is stored at Internal Storage/Android/com.example.MapTest/PixelData.csv" />
 
-
-        <ImageView
-            android:id="@+id/imageIcon"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:layout_columnWeight="1"
-            android:layout_rowWeight="1"
-            android:src="@drawable/ic_launcher_foreground"
-            android:tint="@color/colorPrimary" />
-
-        <TextView
-            android:layout_width="0dp"
-            android:layout_columnWeight="1"
-            android:text="The icon csv is stored at Internal Storage/Android/com.example.MapTest/PixelData.csv" />
-    </GridLayout>
+    <TextView
+        android:id="@+id/iconCounttv"
+        android:layout_width="0dp"
+        android:layout_columnSpan="2"
+        android:layout_columnWeight="1"
+        android:text="Icons Detected : 0"
+        android:textAlignment="center"
+        android:textColor="@android:color/holo_red_dark"
+        android:textSize="16dp" />
+    />
 
     <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_columnSpan="2"
+        android:layout_columnWeight="1">
 
         <TextView
             android:id="@+id/logtv"
@@ -78,6 +76,4 @@
             android:gravity="center"
             android:text="" />
     </ScrollView>
-
-
-</LinearLayout>
+</GridLayout>

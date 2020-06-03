@@ -28,8 +28,7 @@
             </intent-filter>
         </service>
 
-        <service android:name=".ForegroundService"></service>
-        <service android:name=".PixelProcessingService" android:permission="android.permission.BIND_JOB_SERVICE" />
+        <service android:name=".ForegroundService" android:exported="false" android:icon="@android:drawable/btn_radio"></service>
 
         <uses-library
             android:name="org.apache.http.legacy"
