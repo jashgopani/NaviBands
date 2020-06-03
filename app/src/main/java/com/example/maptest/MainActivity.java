@@ -298,9 +298,11 @@ public class MainActivity extends AppCompatActivity {
                         //write to file
                         if (iconName.length() > 0) {
                             IconMap.icons.put(compressedValue, iconName);
-                            CSVUtilities.writeToCSVFile(new String[]{filename,compressedValue, iconName});
                             Log.d(TAG, "onClick: AlertDialog : " + iconName);
                         }
+                        openFileStream();
+                        CSVUtilities.writeToCSVFile(new String[]{filename,compressedValue, iconName});
+                        closeFileStream();
                         labelUnknowns(index+1);
                     }
                 });
