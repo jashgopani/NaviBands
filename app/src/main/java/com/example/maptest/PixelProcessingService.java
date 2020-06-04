@@ -1,6 +1,5 @@
 package com.example.maptest;
 
-import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -8,29 +7,29 @@ import android.graphics.Matrix;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.Icon;
-import android.os.Build;
 import android.os.Environment;
+import android.util.Base64;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.RequiresApi;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import org.apache.commons.lang3.StringUtils;
+
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.Iterator;
-import java.util.List;
+import java.util.Map;
 
-import static android.content.Context.ACTIVITY_SERVICE;
 import static com.example.maptest.Constants.DIRECTION_BROADCAST;
 import static com.example.maptest.Constants.DIRECTION_KNOWN;
 import static com.example.maptest.Constants.DIRECTION_UNKNOWN;
 import static com.example.maptest.Constants.ICON_NULL;
-import static com.example.maptest.Constants.PIXEL_DATA;
+import static com.example.maptest.Constants.ENCODED_DATA;
 import static com.example.maptest.Constants.REROUTING;
 import static com.example.maptest.MainActivity.history;
 
@@ -44,14 +43,36 @@ public class PixelProcessingService {
         Bitmap bitmap = origin.copy(Bitmap.Config.ARGB_8888, true);
         for (int i = 0; i < width; i++) {
             for (int j = 0; j < height; j++) {
-                int color = bitmap.getPixel(i, j);
-                int A = (int)((color & 0xff)<< 24);
-                if(A>0)
-                Log.d(TAG, "turnBinary: i,j : "+A);
-                bitmap.setPixel(i, j, A);
+                int col = bitmap.getPixel(i, j);
+                int alpha = (col & 0xFF000000) >> 24;
+                int red = (col & 0x00FF0000);
+                int green = (col & 0x0000FF00) >> 8;
+                int blue = (col & 0x000000FF) >> 16;
+                int newColor = alpha | blue | green | red;
+                bitmap.setPixel(i, j, newColor);
             }
         }
         return bitmap;
+    }
+
+    //resize bitmap
+    private static Bitmap scaleBitmap(Bitmap cbOriginal,int width,int height,float newWidth,float newHeight){
+        //find scaling factors
+        float scaleWidth = newWidth / width;
+        float scaleHeight = newHeight / height;
+        //prepare transformation matrix
+        Matrix matrix = new Matrix();
+        matrix.setScale(scaleWidth, scaleHeight, width / 2f, height / 2f);
+        //generate scaled bitmap
+        return Bitmap.createBitmap(cbOriginal, 0, 0, width, height, matrix, true);
+    }
+
+    //get base64 encoded String
+    private static String getEncodedBitmap(Bitmap cb){
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        cb.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream);
+        byte[] byteArray = byteArrayOutputStream .toByteArray();
+        return Base64.encodeToString(byteArray, Base64.DEFAULT);
     }
 
     //get Direction from icons
@@ -89,41 +110,32 @@ public class PixelProcessingService {
         int width = cbOriginal.getWidth();
         int height = cbOriginal.getHeight();
 
-        float scaleWidth = 100f / width;
-        float scaleHeight = 100f / height;
-        Matrix matrix = new Matrix();
-        matrix.setScale(scaleWidth, scaleHeight, width / 2f, height / 2f);
+        Bitmap cb = scaleBitmap(cbOriginal,width,height,100f,100f);
 
-        Bitmap cb = Bitmap.createBitmap(cbOriginal, 0, 0, width, height, matrix, true);
         width = cb.getWidth();
         height = cb.getHeight();
+
         Log.d(TAG, "getDirection: " + width + "x" + height);
-        //store it in PixelWrapper for comparisons
-        PixelWrapper p = new PixelWrapper();
 
-        //get pixels of Bitmap first
-        for (int i = 0; i < width; i++) {
-            for (int j = 0; j < height; j++) {
-                int temp = cb.getPixel(i, j);
-                p.pixels.add(temp);
-            }
-        }
-
-        //calculate the rleString for faster comparison
-        p.compressPixels();
+        //get base64 string
+        String encodedString = getEncodedBitmap(cb);
 
         //get the direction name
-        String direction = IconMap.icons.get(p.compressed);
+        String direction = detectDirection(encodedString);
 
         long end_time = System.nanoTime();
         double difference = (end_time - start_time) / 1e6;
+
+        Log.d(TAG, "getDirection: DIRECTION DETECTED " + direction);
         Log.d(TAG, "getDirection: Processing time " + difference);
 
-        String imageName = "NA";
-        if(!history.add(p.compressed))imageName = storeImage(cb, context);
+        String imageName = null;
+        if(!history.containsKey(encodedString)){
+            imageName = storeImage(cb, context);
+            history.put(encodedString,imageName==null?"FILENAME":imageName);
+        }
 
         //broadcast job done intent
-        Log.d(TAG, "getDirection: Workdone " + direction);
         Intent jobDoneIntent = new Intent(DIRECTION_BROADCAST);
         if (direction == null) {
             jobDoneIntent.putExtra("type", DIRECTION_UNKNOWN);
@@ -134,10 +146,18 @@ public class PixelProcessingService {
         jobDoneIntent.putExtra("title", title);
         jobDoneIntent.putExtra("text", text);
         jobDoneIntent.putExtra("icon", ic);
-        jobDoneIntent.putExtra(PIXEL_DATA, p.compressed);
+        jobDoneIntent.putExtra(ENCODED_DATA, encodedString);
         jobDoneIntent.putExtra("filename",imageName);
         //broadcast the intent
         LocalBroadcastManager.getInstance(context).sendBroadcast(jobDoneIntent);
+    }
+
+    private static String detectDirection(String encodedIcon) {
+        for (Map.Entry element : Dataset.data.entrySet()) {
+            String pattern = (String) element.getKey();
+            if(StringUtils.contains(encodedIcon,pattern))return (String) element.getValue();
+        }
+        return null;
     }
 
     //Create a File for saving an image or video
@@ -158,11 +178,13 @@ public class PixelProcessingService {
                 return null;
             }
         }
+        String directoryPath = context.getExternalFilesDir(null).getAbsolutePath() + File.separator;
         // Create a media file name
-        String timeStamp = (new SimpleDateFormat("ddMMyyyy_HHmmss").format(new Date()));
+        String timeStamp = (new SimpleDateFormat("ddMMyy_HHmmss").format(new Date()));
         File mediaFile;
-        String mImageName = timeStamp + ".JPG";
+        String mImageName = timeStamp + ".PNG";
         mediaFile = new File(mediaStorageDir.getPath() + File.separator + mImageName);
+//        mediaFile = new File(directoryPath+ mImageName);
         return mediaFile;
     }
 
@@ -172,7 +194,7 @@ public class PixelProcessingService {
         if (pictureFile == null) {
             Log.d(TAG,
                     "Error creating media file, check storage permissions: ");// e.getMessage());
-            return "NA";
+            return "File not created";
         }
         try {
             FileOutputStream fos = new FileOutputStream(pictureFile);
@@ -185,7 +207,7 @@ public class PixelProcessingService {
             Log.d(TAG, "Error accessing file: " + e.getMessage());
         }
 
-        return pictureFile.getName();
+        return pictureFile.getPath();
     }
 
 }

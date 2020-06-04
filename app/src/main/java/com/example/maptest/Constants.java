@@ -6,7 +6,7 @@ public class Constants {
     public static final String MAPS_PACKAGE = "com.google.android.apps.maps";
     public static final String NOTIFICATION_RECEIVED = "originNotificationListenerService";
     public static final String JOB_DONE = "originPixelProcessingService";
-    public static final String PIXEL_DATA = "compressedPixelString";
+    public static final String ENCODED_DATA = "compressedPixelString";
     public static final String DIRECTION = "directionName";
     public static final String ICON_NULL = "notificationLargeIconNull";
     public static final String REROUTING = "Rerouting...";
@@ -52,7 +52,7 @@ public class Constants {
 ////            Bitmap bitmap = cb.getBitmap();
 ////
 ////            String compressed = intent.getStringExtra(PIXEL_DATA);
-////            if(IconMap.icons.containsKey(compressed)){
+////            if(Dataset.icons.containsKey(compressed)){
 ////                //means this is new icon
 ////                showAlertDialog(compressed,ic.loadDrawable(context));
 ////                storeImage(bitmap);
@@ -166,7 +166,7 @@ public class Constants {
 //    protected void onDestroy() {
 ////        CSVUtilities.openCSVFileWriter(context, path, csvFilename, true);
 ////        CSVUtilities.writeToCSVFile(new String[]{"onDestroy", new Date().toString()});
-////        for (Map.Entry element : IconMap.icons.entrySet()) {
+////        for (Map.Entry element : Dataset.icons.entrySet()) {
 ////            CSVUtilities.writeToCSVFile(new String[]{element.getKey().toString(), element.getValue().toString()});
 ////        }
 ////        CSVUtilities.closeCSVFileWriter(context);
@@ -239,7 +239,7 @@ public class Constants {
 //                        iconName = iconName.length() > 0 ? iconName : "unknown";
 //                        if (iconName.length() > 0) {
 //                            //write to file
-//                            IconMap.icons.put(compressedValue, iconName);
+//                            Dataset.icons.put(compressedValue, iconName);
 //                            CSVUtilities.writeToCSVFile(new String[]{compressedValue, iconName});
 //
 //                            //Register reciever again

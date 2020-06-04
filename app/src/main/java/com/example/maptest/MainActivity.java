@@ -6,9 +6,6 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
-import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.Icon;
 import android.os.Bundle;
@@ -33,6 +30,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -43,13 +41,13 @@ import static com.example.maptest.Constants.DIRECTION_BROADCAST;
 import static com.example.maptest.Constants.DIRECTION_KNOWN;
 import static com.example.maptest.Constants.DIRECTION_UNKNOWN;
 import static com.example.maptest.Constants.ICON_NULL;
-import static com.example.maptest.Constants.PIXEL_DATA;
+import static com.example.maptest.Constants.ENCODED_DATA;
 import static com.example.maptest.Constants.REROUTING;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     public static String PATH = null;
-    public static HashSet<String> history;
+    public static HashMap<String,String> history;
     public static HashSet<UnknownDrawables> unknowns;
     List<UnknownDrawables> unknownsList ;
     private static Context context;
@@ -65,16 +63,18 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onReceive(Context context, Intent intent) {
             Log.d(TAG, "onReceive: Processed Intent Received");
+
             String type = intent.getStringExtra("type");
             if (REROUTING.equals(type)) {
                 Log.d(TAG, "onReceive: Intent is REROUTING");
                 return;
             } else if (ICON_NULL.equals(type)) {
                 Log.d(TAG, "onReceive: Intent is ICON_NULL");
+                return;
             } else {
                 String title = intent.getStringExtra("title");
                 String text = intent.getStringExtra("text");
-                String compressed = intent.getStringExtra(PIXEL_DATA);
+                String encodedString = intent.getStringExtra(ENCODED_DATA);
                 String filename = intent.getStringExtra("filename");
                 String newData = title + "\n" + text + "\n";
 
@@ -82,11 +82,11 @@ public class MainActivity extends AppCompatActivity {
                 Icon ic = intent.getParcelableExtra("icon");
                 Drawable d = ic.loadDrawable(context);
 
-                history.add(compressed);
+                history.put(encodedString,filename);
                 if (DIRECTION_UNKNOWN.equals(type)) {
                     Log.d(TAG, "onReceive: Intent is DIRECTION_UNKNOWN");
                     newData += "\n";
-                    unknowns.add(new UnknownDrawables(d, compressed, filename));
+                    unknowns.add(new UnknownDrawables(d, encodedString, filename));
                     iconCounttv.setText("Icons Detected : "+unknowns.size());
                 } else if (DIRECTION_KNOWN.equals(type)) {
                     Log.d(TAG, "onReceive: Intent is DIRECTION_KNOWN");
@@ -125,7 +125,7 @@ public class MainActivity extends AppCompatActivity {
         Constants.DEBUG_PATH = PATH;
         filename = PATH + CSV_FILENAME;
         monitoringMode = false;
-        history = new HashSet<>();
+        history = new HashMap<>();
         unknowns = new HashSet<>();
     }
 
@@ -146,18 +146,31 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         stopService(new Intent(MainActivity.this,ForegroundService.class));
-        writeIconsMapToCSV();
+        dumpDataToCSV();
         super.onDestroy();
 
     }
 
-    private void writeIconsMapToCSV() {
+    private void dumpDataToCSV() {
+        Log.d(TAG, "dumpDataToCSV: DUMPING STARTED");
         openFileStream();
-        //writing HashMap to csv file
-        for (Map.Entry element : IconMap.icons.entrySet()) {
+        CSVUtilities.writeToCSVFile(new String[]{"history",new Date().toString()});
+        //writing history HashMap to csv file
+        for (Map.Entry element : history.entrySet()) {
+            try {
+                CSVUtilities.writeToCSVFile(new String[]{element.getKey().toString(), element.getValue()==null?"NULL":element.getValue().toString()});
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+        }
+
+        CSVUtilities.writeToCSVFile(new String[]{"Dataset",new Date().toString()});
+        //writing dataset HashMap to csv file
+        for (Map.Entry element : Dataset.data.entrySet()) {
             CSVUtilities.writeToCSVFile(new String[]{element.getKey().toString(), element.getValue().toString()});
         }
         closeFileStream();
+        Log.d(TAG, "dumpDataToCSV: DUMPING COMPLETE");
     }
 
     private void addEventListeners() {
@@ -198,19 +211,10 @@ public class MainActivity extends AppCompatActivity {
         ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 0);
         ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, 0);
 
-        //check storage permissions & ask for it if not granted
-        if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 0);
-        }
-        //check location permissions & ask for it if not granted
-        if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 0);
-        }
-
         //Check for Notification access
         if (Settings.Secure.getString(this.getContentResolver(), "enabled_notification_listeners").contains(getApplicationContext().getPackageName())) {
             //service is enabled do something
-            Log.d(TAG, "Notification access enabled");
+            Log.d(TAG, "Notification access already enabled");
         } else {
             //service is not enabled try to enabled by calling...
             startActivity(new Intent(
@@ -229,16 +233,16 @@ public class MainActivity extends AppCompatActivity {
     private void stopMonitoringService() {
         stopService(new Intent(context, ForegroundService.class));
         statustv.setText(R.string.monitoring_off);
-        unknownsList = new ArrayList<>(unknowns);
-        labelUnknowns(0);
-        writeIconsMapToCSV();
+//        unknownsList = new ArrayList<>(unknowns);
+//        labelUnknowns(0);
+        dumpDataToCSV();
         Log.d(TAG, "stopMonitoringService: " + R.string.monitoring_off);
     }
 
     private void labelUnknowns(int index) {
         if (index >= unknowns.size()) return;
         UnknownDrawables u = unknownsList.get(index);
-        showAlertDialog(u.filename,u.compressed, u.drawable, MainActivity.this, index);
+        showAlertDialog(u.filename,u.encodedString, u.drawable, MainActivity.this, index);
     }
 
     private void registerReceiver() {
@@ -249,7 +253,6 @@ public class MainActivity extends AppCompatActivity {
 
     private void unregisterReceiver() {
         LocalBroadcastManager.getInstance(context).registerReceiver(directionsReceiver, new IntentFilter(DIRECTION_BROADCAST));
-        closeFileStream();
         Log.d(TAG, "unregisterReceiver: DIRECTION_BROADCAST unregistered");
     }
 
@@ -275,7 +278,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void showAlertDialog(String filename,String compressedValue, Drawable icon, Context context, int index) {
+    private void showAlertDialog(String filename,String encodedString, Drawable icon, Context context, int index) {
 
         AlertDialog.Builder alertDialog = new AlertDialog.Builder(context);
         alertDialog.setTitle("New Icon " + (index+1) + "/" + unknowns.size());
@@ -297,11 +300,11 @@ public class MainActivity extends AppCompatActivity {
 
                         //write to file
                         if (iconName.length() > 0) {
-                            IconMap.icons.put(compressedValue, iconName);
+                            Dataset.data.put(encodedString, iconName);
                             Log.d(TAG, "onClick: AlertDialog : " + iconName);
                         }
                         openFileStream();
-                        CSVUtilities.writeToCSVFile(new String[]{filename,compressedValue, iconName});
+                        CSVUtilities.writeToCSVFile(new String[]{filename,encodedString, iconName});
                         closeFileStream();
                         labelUnknowns(index+1);
                     }
@@ -312,12 +315,12 @@ public class MainActivity extends AppCompatActivity {
 
     class UnknownDrawables {
         Drawable drawable;
-        String compressed;
+        String encodedString;
         String filename;
 
-        public UnknownDrawables(Drawable drawable, String compressed, String filename) {
+        public UnknownDrawables(Drawable drawable, String encodedString, String filename) {
             this.drawable = drawable;
-            this.compressed = compressed;
+            this.encodedString = encodedString;
             this.filename = filename;
         }
 
@@ -327,13 +330,12 @@ public class MainActivity extends AppCompatActivity {
             if (!(o instanceof UnknownDrawables)) return false;
             UnknownDrawables that = (UnknownDrawables) o;
 
-            return drawable.equals(that.drawable) ||
-                    compressed.equals(that.compressed);
+            return encodedString.equals(that.encodedString);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(compressed);
+            return Objects.hash(encodedString);
         }
     }
 

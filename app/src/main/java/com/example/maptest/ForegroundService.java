@@ -7,20 +7,15 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.os.Build;
 import android.os.IBinder;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import static com.example.maptest.App.CHANNEL_ID;
-import static com.example.maptest.Constants.DIRECTION_BROADCAST;
 import static com.example.maptest.Constants.NOTIFICATION_RECEIVED;
-import static com.example.maptest.Constants.PROCESSED_NOTIFICATION;
-import static com.example.maptest.Constants.REROUTING;
 
 /*
  * This class is for showing notifications while service is running
