@@ -52,7 +52,7 @@ public class Constants {
 ////            Bitmap bitmap = cb.getBitmap();
 ////
 ////            String compressed = intent.getStringExtra(PIXEL_DATA);
-////            if(Dataset.icons.containsKey(compressed)){
+////            if(IconDataset.icons.containsKey(compressed)){
 ////                //means this is new icon
 ////                showAlertDialog(compressed,ic.loadDrawable(context));
 ////                storeImage(bitmap);
@@ -166,7 +166,7 @@ public class Constants {
 //    protected void onDestroy() {
 ////        CSVUtilities.openCSVFileWriter(context, path, csvFilename, true);
 ////        CSVUtilities.writeToCSVFile(new String[]{"onDestroy", new Date().toString()});
-////        for (Map.Entry element : Dataset.icons.entrySet()) {
+////        for (Map.Entry element : IconDataset.icons.entrySet()) {
 ////            CSVUtilities.writeToCSVFile(new String[]{element.getKey().toString(), element.getValue().toString()});
 ////        }
 ////        CSVUtilities.closeCSVFileWriter(context);
@@ -239,7 +239,7 @@ public class Constants {
 //                        iconName = iconName.length() > 0 ? iconName : "unknown";
 //                        if (iconName.length() > 0) {
 //                            //write to file
-//                            Dataset.icons.put(compressedValue, iconName);
+//                            IconDataset.icons.put(compressedValue, iconName);
 //                            CSVUtilities.writeToCSVFile(new String[]{compressedValue, iconName});
 //
 //                            //Register reciever again

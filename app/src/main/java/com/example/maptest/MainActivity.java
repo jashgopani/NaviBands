@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.Icon;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.util.Log;
@@ -28,7 +29,6 @@ import androidx.core.content.ContextCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -47,7 +47,7 @@ import static com.example.maptest.Constants.REROUTING;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     public static String PATH = null;
-    public static HashMap<String,String> history;
+    public static Map<String,String> history;
     public static HashSet<UnknownDrawables> unknowns;
     List<UnknownDrawables> unknownsList ;
     private static Context context;
@@ -99,8 +99,6 @@ public class MainActivity extends AppCompatActivity {
                 logtv.setText(newData + oldData);
                 iconiv.setImageDrawable(d);
             }
-
-
         }
     };
 
@@ -109,6 +107,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         init();
+        String manufacturer = Build.MANUFACTURER;
     }
 
     private void init() {
@@ -164,9 +163,9 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        CSVUtilities.writeToCSVFile(new String[]{"Dataset",new Date().toString()});
+        CSVUtilities.writeToCSVFile(new String[]{"IconDataset",new Date().toString()});
         //writing dataset HashMap to csv file
-        for (Map.Entry element : Dataset.data.entrySet()) {
+        for (Map.Entry element : IconDataset.data.entrySet()) {
             CSVUtilities.writeToCSVFile(new String[]{element.getKey().toString(), element.getValue().toString()});
         }
         closeFileStream();
@@ -300,7 +299,7 @@ public class MainActivity extends AppCompatActivity {
 
                         //write to file
                         if (iconName.length() > 0) {
-                            Dataset.data.put(encodedString, iconName);
+                            IconDataset.data.put(encodedString, iconName);
                             Log.d(TAG, "onClick: AlertDialog : " + iconName);
                         }
                         openFileStream();

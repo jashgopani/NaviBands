@@ -3,15 +3,19 @@ package com.example.maptest;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.Icon;
+import android.os.Build;
 import android.os.Environment;
 import android.util.Base64;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
+import androidx.core.math.MathUtils;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import org.apache.commons.lang3.StringUtils;
@@ -37,14 +41,14 @@ public class PixelProcessingService {
     private static final String TAG = "PixelProcessingService";
 
     //remove rgb channels from bitmap
-    private static Bitmap turnBinary(Bitmap origin) {
+    protected static Bitmap turnBinary(Bitmap origin) {
         int width = origin.getWidth();
         int height = origin.getHeight();
         Bitmap bitmap = origin.copy(Bitmap.Config.ARGB_8888, true);
         for (int i = 0; i < width; i++) {
             for (int j = 0; j < height; j++) {
                 int col = bitmap.getPixel(i, j);
-                int alpha = (col & 0xFF000000) >> 24;
+                int alpha = ((col & 0xFF000000) >> 24);
                 int red = (col & 0x00FF0000);
                 int green = (col & 0x0000FF00) >> 8;
                 int blue = (col & 0x000000FF) >> 16;
@@ -56,7 +60,7 @@ public class PixelProcessingService {
     }
 
     //resize bitmap
-    private static Bitmap scaleBitmap(Bitmap cbOriginal,int width,int height,float newWidth,float newHeight){
+    protected static Bitmap scaleBitmap(Bitmap cbOriginal, int width, int height, float newWidth, float newHeight){
         //find scaling factors
         float scaleWidth = newWidth / width;
         float scaleHeight = newHeight / height;
@@ -68,7 +72,7 @@ public class PixelProcessingService {
     }
 
     //get base64 encoded String
-    private static String getEncodedBitmap(Bitmap cb){
+    protected static String getEncodedBitmap(Bitmap cb){
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         cb.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream);
         byte[] byteArray = byteArrayOutputStream .toByteArray();
@@ -106,7 +110,7 @@ public class PixelProcessingService {
         BitmapDrawable icon = (BitmapDrawable) d;
 
         //Bitmap processing starts
-        Bitmap cbOriginal = turnBinary(icon.getBitmap());//remove color channels for faster calc
+        Bitmap cbOriginal = icon.getBitmap().extractAlpha();//remove color channels for faster calc
         int width = cbOriginal.getWidth();
         int height = cbOriginal.getHeight();
 
@@ -153,7 +157,7 @@ public class PixelProcessingService {
     }
 
     private static String detectDirection(String encodedIcon) {
-        for (Map.Entry element : Dataset.data.entrySet()) {
+        for (Map.Entry element : IconDataset.data.entrySet()) {
             String pattern = (String) element.getKey();
             if(StringUtils.contains(encodedIcon,pattern))return (String) element.getValue();
         }
@@ -162,6 +166,12 @@ public class PixelProcessingService {
 
     //Create a File for saving an image or video
     private static File getOutputMediaFile(Context context) {
+        //adding random suffix to filename to avoid collision
+        int random = (int) (Math.random()%1000);
+        random+=System.nanoTime();
+        random%=1000;
+        if(random<0)random=Math.abs(random);
+
         // To be safe, you should check that the SDCard is mounted
         // using Environment.getExternalStorageState() before doing this.
         File mediaStorageDir = new File(Environment.getExternalStorageDirectory()
@@ -180,9 +190,9 @@ public class PixelProcessingService {
         }
         String directoryPath = context.getExternalFilesDir(null).getAbsolutePath() + File.separator;
         // Create a media file name
-        String timeStamp = (new SimpleDateFormat("ddMMyy_HHmmss").format(new Date()));
+        String timeStamp = (new SimpleDateFormat("ddMMyy_HHmmssss").format(new Date()));
         File mediaFile;
-        String mImageName = timeStamp + ".PNG";
+        String mImageName = timeStamp+"_"+random+ ".PNG";
         mediaFile = new File(mediaStorageDir.getPath() + File.separator + mImageName);
 //        mediaFile = new File(directoryPath+ mImageName);
         return mediaFile;
