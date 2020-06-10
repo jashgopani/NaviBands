@@ -12,6 +12,8 @@ import androidx.core.content.ContextCompat;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
+import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -23,72 +25,91 @@ import org.junit.runner.RunWith;
 @RunWith(AndroidJUnit4.class)
 public class ExampleInstrumentedTest {
     public static final String TAG = "TAGIT";
-    public Bitmap og;
+    Context appContext;
 
-    @Test
-    public void useAppContext() {
+    /*  Approach
+    * Get drawables and convert them to bitmap of size 100x100
+    * calculate cosine similarity and give result
+    * */
+    @Before
+    public void init(){
         // Context of the app under test.
-        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
-
-        /***********************  Generating original icon  ***************************/
-        Drawable ogdrawable = appContext.getDrawable(R.drawable.right_image_edited);
-        og = getBitmapFromDrawable(ogdrawable);
-        og = PixelProcessingService.scaleBitmap(og.extractAlpha(),og.getWidth(),og.getHeight(),100f,100f);
-
-        /***********************  Processing incoming icon  ***************************/
-        Drawable drawable = ContextCompat.getDrawable(appContext,R.drawable.right_image);
-        drawable.mutate();
-        int width = 0,height = 0;
-        Bitmap bitmap = getBitmapFromDrawable(drawable);
-        width = bitmap.getWidth();
-        height = bitmap.getHeight();
-        Log.d(TAG, "useAppContext: Bitmap Unprocessed >> "+width+","+height);
-        Bitmap cb = PixelProcessingService.scaleBitmap(bitmap.extractAlpha(),width,height,100f,100f);
-        width = cb.getWidth();
-        height = cb.getHeight();
-        Log.d(TAG, "useAppContext: Bitmap Processed >> "+width+","+height);
-
-        Bitmap difference = cosineSimilarity(og,cb);
-        String storedImage = PixelProcessingService.storeImage(difference, appContext);
-        Log.d(TAG, "useAppContext: StoreDifference >> "+storedImage);
-
+        appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
     }
 
+    public boolean areSimilar(int resA,int resB){
+        Bitmap a = getComparableBitmap(resA);
+        Assert.assertNotNull(a);
+        Bitmap b = getComparableBitmap(resB);
+        Assert.assertNotNull(a);
+        boolean isSimilar = cosineSimilarity(appContext,a,b,0,0,a.getWidth(),a.getHeight());
+        return isSimilar;
+    }
 
-    public Bitmap cosineSimilarity(Bitmap a, Bitmap b){
+    public boolean areSimilar(int resA,int resB,int xmin,int ymin,int xmax,int ymax){
+        Bitmap a = getComparableBitmap(resA);
+        Assert.assertNotNull(a);
+        Bitmap b = getComparableBitmap(resB);
+        Assert.assertNotNull(a);
+        boolean isSimilar = cosineSimilarity(appContext,a,b,xmin,ymin,xmax,ymax);
+        return isSimilar;
+    }
+
+    public boolean cosineSimilarity(Context c,Bitmap a, Bitmap b,int xmin,int ymin,int xmax,int ymax){
+        int xMin = xmin;
+        int yMin = ymin;
+        int xMax = xmax;
+        int yMax = ymax;
+        double threshold = 0.6d;
         Bitmap res = Bitmap.createBitmap(a);
         double sumAB=0,Asq=0,Bsq=0;
-
-        for (int i = 0; i < a.getWidth(); i++) {
-            for (int j = 0; j < a.getHeight(); j++) {
+        long start_time = System.nanoTime();
+        for (int i = xMin; i < xMax; i++) {
+            for (int j = yMin; j < yMax; j++) {
+                //get the pixel values
                 int colorA = a.getPixel(i,j);
                 int colorB = b.getPixel(i,j);
-
+                //extract alpha value from pixel value
                 int alphaA = Color.alpha(colorA);
                 int alphaB = Color.alpha(colorB);
-
-                int d = alphaA - alphaB;
-                d = Math.abs(d);
-
-                //for cosine diff
+                //find the absolute difference in alpha values  for storing result image
+                int d = Math.abs(alphaA - alphaB);
+                //calculate and update cosine similarity factors
                 sumAB+=(alphaA*alphaB);
                 Asq+=(alphaA*alphaA);
                 Bsq+=(alphaB*alphaB);
-
+                //set the pixel value based on alpha values only
                 res.setPixel(i,j,Color.argb(d,0,0,0));
             }
         }
-
+        //square root for denominator
         Asq = Math.sqrt(Asq);
         Bsq = Math.sqrt(Bsq);
-
+        //calculate the similarity value
         double similarity = (sumAB/(Asq*Bsq));
-        Log.d(TAG, "diff: Similarity >> "+similarity);
-        return res.extractAlpha();
+
+        //debugging part
+        long end_time = System.nanoTime();
+        double difference = (end_time - start_time) / 1e6;
+        Log.d(TAG, "cosineSimilarity: Comparison Time >> "+difference+"ms");
+        Log.d(TAG, "cosineSimilarity: Similarity >> "+similarity);
+        Log.d(TAG, "results >> "+(similarity>threshold?"Same Icons":"Different Icons"));
+        String storedImage = PixelProcessingService.storeImage(res.extractAlpha(), c);
+        Log.d(TAG, "cosineSimilarity: StoreDifference >> "+storedImage);
+
+        return (similarity > threshold);
     }
 
-    public Bitmap getBitmapFromDrawable(Drawable drawable){
+    public Bitmap getComparableBitmap(int resId){
+        //for storing result
         Bitmap bitmap;
+
+        // Context of the app under test.
+        Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        //get drawable from resource id
+        Drawable drawable = ContextCompat.getDrawable(appContext,resId);
+        drawable = drawable.mutate();
+
         try{
             bitmap = Bitmap.createBitmap(drawable.getIntrinsicWidth(),
                     drawable.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
@@ -101,7 +122,29 @@ public class ExampleInstrumentedTest {
         Canvas canvas = new Canvas(bitmap);
         drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
         drawable.draw(canvas);
-        return bitmap;
+
+        //return alpha bitmap of size 100x100
+        return PixelProcessingService.scaleBitmap(bitmap.extractAlpha(),bitmap.getWidth(),bitmap.getHeight(),100f,100f);
+    }
+
+    @Test
+    public void TestIcons(){
+        Assert.assertTrue(areSimilar(R.drawable.circle_straight,R.drawable.circle_straight));
+        Assert.assertTrue(areSimilar(R.drawable.da_turn_right,R.drawable.right_image));
+        Assert.assertTrue(areSimilar(R.drawable.da_turn_right,R.drawable.right_image_edited));
+        Assert.assertTrue(areSimilar(R.drawable.right_image,R.drawable.right_image_edited));
+        Assert.assertFalse(areSimilar(R.drawable.circle_straight,R.drawable.depart));
+        Assert.assertFalse(areSimilar(R.drawable.circle_straight,R.drawable.da_turn_generic_roundabout));
+        Assert.assertFalse(areSimilar(R.drawable.circle_straight,R.drawable.ic_roundabout_exit));
+        Assert.assertFalse(areSimilar(R.drawable.circle_straight,R.drawable.ic_uturn));
+        Assert.assertFalse(areSimilar(R.drawable.circle_straight,R.drawable.right_image));
+        Assert.assertFalse(areSimilar(R.drawable.circle_straight,R.drawable.left_image));
+        Assert.assertFalse(areSimilar(R.drawable.circle_straight,R.drawable.right_image_edited));
+        Assert.assertFalse(areSimilar(R.drawable.right_image,R.drawable.left_image));
+        Assert.assertFalse(areSimilar(R.drawable.right_image_edited,R.drawable.left_image));
+        Assert.assertFalse(areSimilar(R.drawable.da_turn_generic_roundabout,R.drawable.da_turn_roundabout_5));
+        Assert.assertFalse(areSimilar(R.drawable.ic_roundabout_exit,R.drawable.da_turn_roundabout_5));
+        Assert.assertFalse(areSimilar(R.drawable.ic_roundabout_exit,R.drawable.da_turn_generic_roundabout));
     }
 
 }
