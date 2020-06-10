@@ -129,22 +129,65 @@ public class ExampleInstrumentedTest {
 
     @Test
     public void TestIcons(){
-        Assert.assertTrue(areSimilar(R.drawable.circle_straight,R.drawable.circle_straight));
-        Assert.assertTrue(areSimilar(R.drawable.da_turn_right,R.drawable.right_image));
-        Assert.assertTrue(areSimilar(R.drawable.da_turn_right,R.drawable.right_image_edited));
-        Assert.assertTrue(areSimilar(R.drawable.right_image,R.drawable.right_image_edited));
-        Assert.assertFalse(areSimilar(R.drawable.circle_straight,R.drawable.depart));
-        Assert.assertFalse(areSimilar(R.drawable.circle_straight,R.drawable.da_turn_generic_roundabout));
-        Assert.assertFalse(areSimilar(R.drawable.circle_straight,R.drawable.ic_roundabout_exit));
-        Assert.assertFalse(areSimilar(R.drawable.circle_straight,R.drawable.ic_uturn));
-        Assert.assertFalse(areSimilar(R.drawable.circle_straight,R.drawable.right_image));
-        Assert.assertFalse(areSimilar(R.drawable.circle_straight,R.drawable.left_image));
-        Assert.assertFalse(areSimilar(R.drawable.circle_straight,R.drawable.right_image_edited));
-        Assert.assertFalse(areSimilar(R.drawable.right_image,R.drawable.left_image));
-        Assert.assertFalse(areSimilar(R.drawable.right_image_edited,R.drawable.left_image));
-        Assert.assertFalse(areSimilar(R.drawable.da_turn_generic_roundabout,R.drawable.da_turn_roundabout_5));
-        Assert.assertFalse(areSimilar(R.drawable.ic_roundabout_exit,R.drawable.da_turn_roundabout_5));
-        Assert.assertFalse(areSimilar(R.drawable.ic_roundabout_exit,R.drawable.da_turn_generic_roundabout));
+        /*
+        R.drawable.da_turn_arrive_right_svg,
+R.drawable.da_turn_arrive_svg,
+R.drawable.da_turn_depart_svg,
+R.drawable.da_turn_ferry_svg,
+R.drawable.da_turn_fork_right_svg,
+R.drawable.da_turn_generic_merge_svg,
+R.drawable.da_turn_generic_roundabout_svg,
+R.drawable.da_turn_ramp_right_svg,
+R.drawable.da_turn_right_svg,
+R.drawable.da_turn_roundabout_1_svg,
+R.drawable.da_turn_roundabout_2_svg,
+R.drawable.da_turn_roundabout_3_svg,
+R.drawable.da_turn_roundabout_4_svg,
+R.drawable.da_turn_roundabout_5_svg,
+R.drawable.da_turn_roundabout_6_svg,
+R.drawable.da_turn_roundabout_7_svg,
+R.drawable.da_turn_roundabout_8_svg,
+R.drawable.da_turn_roundabout_exit_svg,
+R.drawable.da_turn_sharp_right_svg,
+R.drawable.da_turn_slight_right_svg,
+R.drawable.da_turn_straight_svg,
+R.drawable.da_turn_unknown_svg,
+R.drawable.da_turn_uturn_svg,
+R.drawable.ic_alternate_route_svg,
+R.drawable.ic_arrive_right_svg,
+R.drawable.ic_roundabout_exit_svg,
+R.drawable.ic_roundabout_left_svg,
+R.drawable.ic_roundabout_right_svg,
+R.drawable.ic_roundabout_sharp_left_svg,
+R.drawable.ic_roundabout_sharp_right_svg,
+R.drawable.ic_roundabout_slight_left_svg,
+R.drawable.ic_roundabout_slight_right_svg,
+R.drawable.ic_roundabout_straight_svg,
+R.drawable.ic_roundabout_svg,
+R.drawable.ic_roundabout_u_turn_svg,
+R.drawable.ic_straight_svg,
+R.drawable.ic_turn_right_svg,
+R.drawable.ic_turn_sharp_right_svg,
+R.drawable.ic_turn_slight_right_svg,
+R.drawable.ic_u_turn_svg,
+R.drawable.lane_normal_short_svg,
+R.drawable.lane_normal_svg,
+R.drawable.lane_sharp_short_svg,
+R.drawable.lane_sharp_svg,
+R.drawable.lane_slight_svg,
+R.drawable.lane_slight_tall_svg,
+R.drawable.lane_straight_svg,
+R.drawable.lane_straight_tall_svg,
+R.drawable.lane_stub_svg,
+R.drawable.lane_uturn_short_svg,
+R.drawable.lane_uturn_svg,
+
+        * */
+    }
+
+    @Test
+    public void Sandbox(){
+        Assert.assertFalse(areSimilar(R.drawable.ic_roundabout_exit_svg,R.drawable.ic_launcher_foreground));
     }
 
 }

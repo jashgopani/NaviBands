@@ -3,11 +3,13 @@ package com.example.maptest;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.Icon;
+import android.graphics.drawable.VectorDrawable;
 import android.os.Build;
 import android.os.Environment;
 import android.util.Base64;
@@ -15,6 +17,7 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
+import androidx.core.content.ContextCompat;
 import androidx.core.math.MathUtils;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
@@ -26,6 +29,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.Map;
 
@@ -40,23 +44,40 @@ import static com.example.maptest.MainActivity.history;
 public class PixelProcessingService {
     private static final String TAG = "PixelProcessingService";
 
-    //remove rgb channels from bitmap
-    protected static Bitmap turnBinary(Bitmap origin) {
-        int width = origin.getWidth();
-        int height = origin.getHeight();
-        Bitmap bitmap = origin.copy(Bitmap.Config.ARGB_8888, true);
-        for (int i = 0; i < width; i++) {
-            for (int j = 0; j < height; j++) {
-                int col = bitmap.getPixel(i, j);
-                int alpha = ((col & 0xFF000000) >> 24);
-                int red = (col & 0x00FF0000);
-                int green = (col & 0x0000FF00) >> 8;
-                int blue = (col & 0x000000FF) >> 16;
-                int newColor = alpha | blue | green | red;
-                bitmap.setPixel(i, j, newColor);
-            }
+    //get alpha pixels of Bitmap as a list
+    public static ArrayList<Integer> getAlphaPixels(Bitmap a) {
+        ArrayList<Integer> pixels = new ArrayList<>();
+        for(int i=0;i<a.getWidth();i++)
+            for (int j = 0; j < a.getHeight(); j++)
+                pixels.add(a.getPixel(i,j));
+
+        return pixels;
+    }
+
+    //get an alpha bitmap from a resource of size 100x100
+    public static Bitmap getComparableBitmap(Context appContext, int resId){
+        //for storing result
+        Bitmap bitmap;
+
+        //get drawable from resource id
+        Drawable drawable = ContextCompat.getDrawable(appContext,resId);
+        drawable = drawable.mutate();
+
+        try{
+            bitmap = Bitmap.createBitmap(drawable.getIntrinsicWidth(),
+                    drawable.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
+        }catch(ClassCastException e){
+            VectorDrawable vd = (VectorDrawable) drawable;
+            bitmap = Bitmap.createBitmap(vd.getIntrinsicWidth(),
+                    vd.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
         }
-        return bitmap;
+
+        Canvas canvas = new Canvas(bitmap);
+        drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
+        drawable.draw(canvas);
+
+        //return alpha bitmap of size 100x100
+        return scaleBitmap(bitmap.extractAlpha(),bitmap.getWidth(),bitmap.getHeight(),100f,100f);
     }
 
     //resize bitmap
