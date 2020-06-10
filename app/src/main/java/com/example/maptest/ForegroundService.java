@@ -7,6 +7,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.Build;
 import android.os.IBinder;
 import android.util.Log;
 
@@ -47,8 +48,12 @@ public class ForegroundService extends Service {
         Log.d(TAG, "onStartCommand: Started Foreground Service");
         String title = intent.getStringExtra("title");
         String text = intent.getStringExtra("text");
+        Log.d(TAG, "onStartCommand: "+title+" | "+text);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            stopForeground(flags);
+        }
         showNotification(this, title, text);
-        return START_NOT_STICKY;
+        return START_STICKY;
     }
 
     private void showNotification(Context context, String title, String text) {
@@ -61,7 +66,6 @@ public class ForegroundService extends Service {
                 .setSmallIcon(R.drawable.notification_icon)
                 .setContentIntent(pendingIntent)
                 .setOnlyAlertOnce(true)
-                .setOngoing(true)
                 .build();
 
         startForeground(69, notification);
@@ -70,7 +74,6 @@ public class ForegroundService extends Service {
     @Override
     public void onDestroy() {
         Log.d(TAG, "onDestroy: Destroying Foreground service");
-//        LocalBroadcastManager.getInstance(context).unregisterReceiver(notificationReceiver);
         context.unregisterReceiver(test);
         super.onDestroy();
     }

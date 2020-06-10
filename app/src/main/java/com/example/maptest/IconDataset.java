@@ -1,9 +1,17 @@
 package com.example.maptest;
 
 import android.graphics.Bitmap;
+import android.graphics.Color;
+import android.util.Log;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 
 public class IconDataset {
     private static final String TAG = "IconDataset";
@@ -45,7 +53,6 @@ public class IconDataset {
                 R.drawable.da_turn_sharp_right_svg,
                 R.drawable.da_turn_slight_right_svg,
                 R.drawable.da_turn_straight_svg,
-                R.drawable.da_turn_unknown_svg,
                 R.drawable.da_turn_uturn_svg,
                 R.drawable.ic_alternate_route_svg,
                 R.drawable.ic_arrive_right_svg,
@@ -76,6 +83,8 @@ public class IconDataset {
                 R.drawable.lane_uturn_short_svg,
                 R.drawable.lane_uturn_svg,
         };
+
+        mapDirectionsWithResources();
     }
 
     private static void mapDirectionsWithResources(){
@@ -99,7 +108,6 @@ public class IconDataset {
         directionNames.put(R.drawable.da_turn_sharp_right_svg,Directions.SHARP_RIGHT);
         directionNames.put(R.drawable.da_turn_slight_right_svg,Directions.SLIGHT_RIGHT);
         directionNames.put(R.drawable.da_turn_straight_svg,Directions.STRAIGHT);
-        directionNames.put(R.drawable.da_turn_unknown_svg,Directions.UNKNOWN);
         directionNames.put(R.drawable.da_turn_uturn_svg,Directions.U_LEFT);
         directionNames.put(R.drawable.ic_alternate_route_svg,Directions.ALTERNATE);
         directionNames.put(R.drawable.ic_arrive_right_svg,Directions.ARRIVED);
@@ -128,40 +136,88 @@ public class IconDataset {
         directionNames.put(R.drawable.lane_straight_tall_svg,Directions.STRAIGHT);
         directionNames.put(R.drawable.lane_uturn_short_svg,Directions.U_RIGHT);
         directionNames.put(R.drawable.lane_uturn_svg,Directions.U_RIGHT);
+        directionNames.put(-1,Directions.UNKNOWN);
 
+        //sort by value so that same directions remain together
+        directionNames = sortDirectionNamesByValue(directionNames);
     }
 
-    protected static boolean contains(Bitmap a){
+    public static HashMap<Integer, String> sortDirectionNamesByValue(HashMap<Integer, String> hm)
+    {
+        // Create a list from elements of HashMap
+        List<Map.Entry<Integer, String> > list =
+                new LinkedList<Map.Entry<Integer, String> >(hm.entrySet());
+
+        // Sort the list
+        Collections.sort(list, new Comparator<Map.Entry<Integer, String> >() {
+            public int compare(Map.Entry<Integer, String> o1,
+                               Map.Entry<Integer, String> o2)
+            {
+                return (o1.getValue()).compareTo(o2.getValue());
+            }
+        });
+
+        // put data from sorted list to hashmap
+        HashMap<Integer, String> temp = new LinkedHashMap<Integer, String>();
+        for (Map.Entry<Integer, String> aa : list) {
+            temp.put(aa.getKey(), aa.getValue());
+        }
+        return temp;
+    }
+
+    protected static int getMatchingIcon(Bitmap a){
+
         //load data if not loaded
         if (bitmapData==null)loadBitmapData();
 
-        double maxValue=0;
+        double maxSimilarity=0,prevSimilarity=0;
         int maxId=0;
-        ArrayList<Integer> target = PixelProcessingService.getAlphaPixels(a);
+        String prevDirection = "";
+        ArrayList<Integer> targetPixels = PixelProcessingService.getAlphaPixels(a);
 
-        for(HashMap.Entry res:bitmapData.entrySet()){
-            double val = cosineSimilarity((ArrayList<Integer>) res.getValue(),target);
-            if(val > maxValue){
-                maxValue = val;
-                maxId = (int) res.getKey();
+        //traverse array and compare
+        for(Map.Entry<Integer, ArrayList<Integer>> res:bitmapData.entrySet()){
+
+            //get current direction name from current resId
+            int currResId = res.getKey();
+            String currDirection = directionNames.get(currResId);
+            ArrayList<Integer> currPixels = res.getValue();
+
+            //calc similarity
+            double val = cosineSimilarity(currPixels,targetPixels);
+
+            Log.d(TAG, "comparing with: "+currDirection+" | "+val);
+
+            if(val > maxSimilarity){
+                maxSimilarity = val;
+                maxId = currResId;//for debugging
+
+                double diff = Math.abs(val-prevSimilarity);
+                if(diff>=0 && diff<=0.15d && currDirection.equals(prevDirection) && maxSimilarity>0.6){
+                    //if the previous similarity is almost same and the direction is also same
+                    //no redundant comparison needed
+                    Log.d(TAG, "contains: DirectionDetected >> "+currDirection);
+                    return maxId;
+                }
+
             }
+            //store prev direction name and prev
+            prevSimilarity = val;
+            prevDirection = directionNames.get(currResId);
         }
 
-        if(maxValue > 0.6)return true;
-
-        return false;
+        return maxId;
     }
 
     private static double cosineSimilarity(ArrayList<Integer> a,ArrayList<Integer> b){
         int size = a.size();
         double similarity = 0;
         double sumAB=0,Asq=0,Bsq=0;
-        long start_time = System.nanoTime();
+
         for (int i = 0; i < size; i++) {
             //extract alpha value from pixel value
             int alphaA = a.get(i);
             int alphaB = b.get(i);
-
             //calculate and update cosine similarity factors
             sumAB+=(alphaA*alphaB);
             Asq+=(alphaA*alphaA);
@@ -178,21 +234,21 @@ public class IconDataset {
     }
 
     protected static class Directions{
-        public static final String ARRIVED = "ARR";
+        public static final String ARRIVED = "ARRIVED";
 
-        public static final String STRAIGHT = "SS";
+        public static final String STRAIGHT = "STRAIGHT";
 
-        public static final String SLIGHT_LEFT = "L";
-        public static final String LEFT = "LL";
-        public static final String SHARP_LEFT = "LLL";
-        public static final String U_LEFT = "LLLL";
+        public static final String SLIGHT_LEFT = "SLIGHT LEFT";
+        public static final String LEFT = "LEFT";
+        public static final String SHARP_LEFT = "SHARP LEFT";
+        public static final String U_LEFT = "U-LEFT";
 
-        public static final String SLIGHT_RIGHT = "R";
-        public static final String RIGHT = "RR";
-        public static final String SHARP_RIGHT = "RRR";
-        public static final String U_RIGHT = "RRRR";
+        public static final String SLIGHT_RIGHT = "SLIGHT RIGHT";
+        public static final String RIGHT = "RIGHT";
+        public static final String SHARP_RIGHT = "SHARP RIGHT";
+        public static final String U_RIGHT = "U-RIGHT";
 
-        public static final String UNKNOWN = "?";
+        public static final String UNKNOWN = "UNKNOWN";
         public static final String ALTERNATE = "LR";
     }
 

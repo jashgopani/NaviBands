@@ -6,24 +6,17 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
-import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.Icon;
 import android.graphics.drawable.VectorDrawable;
-import android.os.Build;
 import android.os.Environment;
-import android.util.Base64;
+import android.text.TextUtils;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.RequiresApi;
 import androidx.core.content.ContextCompat;
-import androidx.core.math.MathUtils;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
-import org.apache.commons.lang3.StringUtils;
-
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -31,15 +24,13 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static com.example.maptest.Constants.DIRECTION_BROADCAST;
 import static com.example.maptest.Constants.DIRECTION_KNOWN;
-import static com.example.maptest.Constants.DIRECTION_UNKNOWN;
 import static com.example.maptest.Constants.ICON_NULL;
-import static com.example.maptest.Constants.ENCODED_DATA;
 import static com.example.maptest.Constants.REROUTING;
-import static com.example.maptest.MainActivity.history;
 
 public class PixelProcessingService {
     private static final String TAG = "PixelProcessingService";
@@ -47,26 +38,27 @@ public class PixelProcessingService {
     //get alpha pixels of Bitmap as a list
     public static ArrayList<Integer> getAlphaPixels(Bitmap a) {
         ArrayList<Integer> pixels = new ArrayList<>();
-        for(int i=0;i<a.getWidth();i++)
+        for (int i = 0; i < a.getWidth(); i++)
             for (int j = 0; j < a.getHeight(); j++)
-                pixels.add(a.getPixel(i,j));
+                pixels.add(Color.alpha(a.getPixel(i, j)));
 
         return pixels;
     }
 
     //get an alpha bitmap from a resource of size 100x100
-    public static Bitmap getComparableBitmap(Context appContext, int resId){
+    public static Bitmap getComparableBitmap(Context appContext, int resId) {
         //for storing result
         Bitmap bitmap;
 
         //get drawable from resource id
-        Drawable drawable = ContextCompat.getDrawable(appContext,resId);
+        Drawable drawable = appContext.getDrawable(resId);
+        assert drawable != null;
         drawable = drawable.mutate();
 
-        try{
+        try {
             bitmap = Bitmap.createBitmap(drawable.getIntrinsicWidth(),
                     drawable.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
-        }catch(ClassCastException e){
+        } catch (ClassCastException e) {
             VectorDrawable vd = (VectorDrawable) drawable;
             bitmap = Bitmap.createBitmap(vd.getIntrinsicWidth(),
                     vd.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
@@ -77,11 +69,33 @@ public class PixelProcessingService {
         drawable.draw(canvas);
 
         //return alpha bitmap of size 100x100
-        return scaleBitmap(bitmap.extractAlpha(),bitmap.getWidth(),bitmap.getHeight(),100f,100f);
+        return scaleBitmap(bitmap.extractAlpha(), bitmap.getWidth(), bitmap.getHeight(), 100f, 100f);
+    }
+
+    //get an alpha bitmap from a resource of size 100x100
+    public static Bitmap getComparableBitmap(Drawable drawable) {
+        //for storing result
+        Bitmap bitmap;
+
+        try {
+            bitmap = Bitmap.createBitmap(drawable.getIntrinsicWidth(),
+                    drawable.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
+        } catch (ClassCastException e) {
+            VectorDrawable vd = (VectorDrawable) drawable;
+            bitmap = Bitmap.createBitmap(vd.getIntrinsicWidth(),
+                    vd.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
+        }
+
+        Canvas canvas = new Canvas(bitmap);
+        drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
+        drawable.draw(canvas);
+
+        //return alpha bitmap of size 100x100
+        return scaleBitmap(bitmap.extractAlpha(), bitmap.getWidth(), bitmap.getHeight(), 100f, 100f);
     }
 
     //resize bitmap
-    protected static Bitmap scaleBitmap(Bitmap cbOriginal, int width, int height, float newWidth, float newHeight){
+    protected static Bitmap scaleBitmap(Bitmap cbOriginal, int width, int height, float newWidth, float newHeight) {
         //find scaling factors
         float scaleWidth = newWidth / width;
         float scaleHeight = newHeight / height;
@@ -92,20 +106,13 @@ public class PixelProcessingService {
         return Bitmap.createBitmap(cbOriginal, 0, 0, width, height, matrix, true);
     }
 
-    //get base64 encoded String
-    protected static String getEncodedBitmap(Bitmap cb){
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        cb.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream);
-        byte[] byteArray = byteArrayOutputStream .toByteArray();
-        return Base64.encodeToString(byteArray, Base64.DEFAULT);
-    }
 
     //get Direction from icons
     protected static void getDirection(Context context, @NonNull Intent intent) {
 
         Log.d(TAG, "getDirection: Inside PixelProcessingService");
         //return if Map is rerouting
-        if (REROUTING.equals(intent.getStringExtra("type"))){
+        if (REROUTING.equals(intent.getStringExtra("type"))) {
             LocalBroadcastManager.getInstance(context).sendBroadcast(new Intent(DIRECTION_BROADCAST).putExtra("type", REROUTING));
             return;
         }
@@ -128,25 +135,13 @@ public class PixelProcessingService {
 
         //convert icon to bitmap
         Drawable d = ic.loadDrawable(context);
-        BitmapDrawable icon = (BitmapDrawable) d;
 
-        //Bitmap processing starts
-        Bitmap cbOriginal = icon.getBitmap().extractAlpha();//remove color channels for faster calc
-        int width = cbOriginal.getWidth();
-        int height = cbOriginal.getHeight();
-
-        Bitmap cb = scaleBitmap(cbOriginal,width,height,100f,100f);
-
-        width = cb.getWidth();
-        height = cb.getHeight();
-
-        Log.d(TAG, "getDirection: " + width + "x" + height);
-
-        //get base64 string
-        String encodedString = getEncodedBitmap(cb);
-
-        //get the direction name
-        String direction = detectDirection(encodedString);
+        //get bitmap and get direction
+        Bitmap currentBitmap = getComparableBitmap(d);
+        int matchingRes = IconDataset.getMatchingIcon(currentBitmap);
+        String direction = IconDataset.directionNames.get(matchingRes);
+//        String filename = storeImage(currentBitmap,context);
+//        Log.d(TAG, "Stored >> "+title+" | "+text+" | "+direction + " | "+filename);
 
         long end_time = System.nanoTime();
         double difference = (end_time - start_time) / 1e6;
@@ -154,44 +149,25 @@ public class PixelProcessingService {
         Log.d(TAG, "getDirection: DIRECTION DETECTED " + direction);
         Log.d(TAG, "getDirection: Processing time " + difference);
 
-        String imageName = null;
-        if(!history.containsKey(encodedString)){
-            imageName = storeImage(cb, context);
-            history.put(encodedString,imageName==null?"FILENAME":imageName);
-        }
-
         //broadcast job done intent
         Intent jobDoneIntent = new Intent(DIRECTION_BROADCAST);
-        if (direction == null) {
-            jobDoneIntent.putExtra("type", DIRECTION_UNKNOWN);
-        } else {
-            jobDoneIntent.putExtra("type", DIRECTION_KNOWN);
-            jobDoneIntent.putExtra("direction", direction);
-        }
+        jobDoneIntent.putExtra("type", DIRECTION_KNOWN);
+        jobDoneIntent.putExtra("direction", direction);
         jobDoneIntent.putExtra("title", title);
         jobDoneIntent.putExtra("text", text);
-        jobDoneIntent.putExtra("icon", ic);
-        jobDoneIntent.putExtra(ENCODED_DATA, encodedString);
-        jobDoneIntent.putExtra("filename",imageName);
+
         //broadcast the intent
         LocalBroadcastManager.getInstance(context).sendBroadcast(jobDoneIntent);
     }
 
-    private static String detectDirection(String encodedIcon) {
-        for (Map.Entry element : IconDataset.data.entrySet()) {
-            String pattern = (String) element.getKey();
-            if(StringUtils.contains(encodedIcon,pattern))return (String) element.getValue();
-        }
-        return null;
-    }
 
     //Create a File for saving an image or video
     private static File getOutputMediaFile(Context context) {
         //adding random suffix to filename to avoid collision
-        int random = (int) (Math.random()%1000);
-        random+=System.nanoTime();
-        random%=1000;
-        if(random<0)random=Math.abs(random);
+        int random = (int) (Math.random() % 1000);
+        random += System.nanoTime();
+        random %= 1000;
+        if (random < 0) random = Math.abs(random);
 
         // To be safe, you should check that the SDCard is mounted
         // using Environment.getExternalStorageState() before doing this.
@@ -213,7 +189,7 @@ public class PixelProcessingService {
         // Create a media file name
         String timeStamp = (new SimpleDateFormat("ddMMyy_HHmmssss").format(new Date()));
         File mediaFile;
-        String mImageName = timeStamp+"_"+random+ ".PNG";
+        String mImageName = timeStamp + "_" + random + ".PNG";
         mediaFile = new File(mediaStorageDir.getPath() + File.separator + mImageName);
 //        mediaFile = new File(directoryPath+ mImageName);
         return mediaFile;
@@ -240,5 +216,6 @@ public class PixelProcessingService {
 
         return pictureFile.getPath();
     }
+
 
 }

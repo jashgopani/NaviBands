@@ -29,40 +29,6 @@
         android:textOff="@string/monitoring_off"
         android:textOn="@string/monitoring_on" />
 
-
-    <Button
-        android:id="@+id/debugFileBtn"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_columnWeight="1"
-        android:text="Test File Operation"
-        android:textAlignment="center" />
-
-
-    <ImageView
-        android:id="@+id/imageIcon"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_columnWeight="1"
-        android:src="@drawable/ic_launcher_foreground"
-        android:tint="@color/colorPrimary" />
-
-    <TextView
-        android:layout_width="0dp"
-        android:layout_columnWeight="1"
-        android:text="The icon csv is stored at Internal Storage/Android/com.example.MapTest/PixelData.csv" />
-
-    <TextView
-        android:id="@+id/iconCounttv"
-        android:layout_width="0dp"
-        android:layout_columnSpan="2"
-        android:layout_columnWeight="1"
-        android:text="Icons Detected : 0"
-        android:textAlignment="center"
-        android:textColor="@android:color/holo_red_dark"
-        android:textSize="16dp" />
-    />
-
     <ScrollView
         android:layout_width="0dp"
         android:layout_height="wrap_content"

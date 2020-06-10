@@ -46,9 +46,6 @@ public class NotificationMonitor extends NotificationListenerService {
         super.onListenerDisconnected();
     }
 
-    public static Drawable getIconResource() {
-        return currIcon;
-    }
 
     @Override
     public void onCreate() {
