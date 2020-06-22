@@ -6,4 +6,6 @@
     <string name="monitoring_off">Navigation is OFF</string>
     <string name="debug_file_success">Debug Operation Successful</string>
     <string name="debug_file_failure">File debug operation failed</string>
+    <string name="vibrate_distance">Select the min. distance before a turn when band vibrates</string>
+    <string name="threshold">Current Threshold distance :</string>
 </resources>

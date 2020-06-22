@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.Icon;
 import android.os.Build;
@@ -18,6 +19,7 @@ import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
@@ -48,7 +50,9 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     private static Context context;
     ToggleButton toggleMonitoringBtn;
-    TextView logtv, statustv;
+    TextView logtv, statustv,thresholdtv;
+    SeekBar thresholdSb;
+    private int currentThreshold = 5;
     boolean monitoringMode;
 
     final BroadcastReceiver directionsReceiver = new BroadcastReceiver() {
@@ -83,9 +87,10 @@ public class MainActivity extends AppCompatActivity {
                         char[] c = t.toCharArray();
                         if(!(c[t.length()-2]=='k')){
                             distance = Integer.parseInt(t.substring(0,t.length()-2));
-                            if(distance<=20){
+                            if(distance<=currentThreshold){
                                 String msg = direction+" in "+distance+"m";
                                 updateMonitoringService(title,msg);
+                                Toast.makeText(context, "<< Naviband Vibrates >>", Toast.LENGTH_SHORT).show();
                             }else{
                                 updateMonitoringService(title,"Navigating..");
                             }
@@ -111,8 +116,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void init() {
-        initializeVariables();
         findViews();
+        initializeVariables();
         addEventListeners();
         getPermissions();
         setStatustv();
@@ -121,18 +126,25 @@ public class MainActivity extends AppCompatActivity {
     private void initializeVariables() {
         context = getApplicationContext();
         monitoringMode = false;
+
+        //seek bar and its related text view
+        thresholdSb.setProgress(currentThreshold);
+        thresholdtv.setText(currentThreshold+"m");
     }
 
     private void findViews() {
         toggleMonitoringBtn = findViewById(R.id.toggleMonitoringBtn);
         logtv = findViewById(R.id.logtv);
         statustv = findViewById(R.id.statustv);
+        thresholdSb = findViewById(R.id.thresholdSeek);
+        thresholdtv = findViewById(R.id.thresholdTv);
     }
 
     @Override
     protected void onDestroy() {
         stopService(new Intent(MainActivity.this,ForegroundService.class));
         super.onDestroy();
+
     }
 
 
@@ -153,6 +165,23 @@ public class MainActivity extends AppCompatActivity {
                     stopMonitoringService();
                     unregisterReceiver();
                 }
+            }
+        });
+
+        thresholdSb.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                currentThreshold = progress;
+                thresholdtv.setText(currentThreshold+"m");
+                thresholdtv.setTextColor(Color.RED);
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
             }
         });
 

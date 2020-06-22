@@ -180,7 +180,7 @@ public class IconDataset {
 
             //get current direction name from current resId
             int currResId = res.getKey();
-            String currDirection = directionNames.get(currResId);
+            String currDirection = directionNames.containsKey(currResId)?directionNames.get(currResId):Directions.UNKNOWN;
             ArrayList<Integer> currPixels = res.getValue();
 
             //calc similarity
@@ -193,7 +193,7 @@ public class IconDataset {
                 maxId = currResId;//for debugging
 
                 double diff = Math.abs(val-prevSimilarity);
-                if(diff>=0 && diff<=0.15d && currDirection.equals(prevDirection) && maxSimilarity>0.6){
+                if(diff>=0 && diff<=0.15d && currDirection!=null && currDirection.equals(prevDirection) && maxSimilarity>0.6){
                     //if the previous similarity is almost same and the direction is also same
                     //no redundant comparison needed
                     Log.d(TAG, "contains: DirectionDetected >> "+currDirection);
