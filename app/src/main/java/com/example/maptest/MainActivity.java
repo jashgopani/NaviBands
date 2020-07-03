@@ -1,6 +1,7 @@
 package com.example.maptest;
 
 import android.Manifest;
+import android.bluetooth.le.ScanResult;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -37,6 +38,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+
+import jashgopani.github.io.mibandsdk.MiBand;
 
 import static com.example.maptest.Constants.CSV_FILENAME;
 import static com.example.maptest.Constants.DIRECTION_BROADCAST;
@@ -112,6 +115,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        MiBand miBand = MiBand.getInstance(context);
         init();
     }
 
