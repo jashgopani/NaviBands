@@ -4,11 +4,6 @@ import android.text.TextUtils;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
-
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.firebase.firestore.FirebaseFirestore;
-
 import org.apache.commons.lang3.StringUtils;
 import org.junit.Before;
 import org.junit.Test;
@@ -17,6 +12,8 @@ import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import jashgopani.github.io.mibandsdk.models.CustomVibration;
 
 import static org.apache.commons.lang3.StringUtils.difference;
 import static org.junit.Assert.*;
@@ -42,5 +39,13 @@ public class ExampleUnitTest {
         Matcher m = (Pattern.compile(pattern)).matcher(t);
         String res = m.find() ? m.group().trim() : "-1";
         System.out.println("Your REGEX answer : " + Integer.parseInt(res));
+    }
+
+    @Test
+    public void detectType(){
+        Integer[] integers = CustomVibration.generatePattern("600", ",");
+        System.out.println(Arrays.toString(integers));
+        String direction = "U";
+        assertTrue(direction.endsWith("U"));
     }
 }

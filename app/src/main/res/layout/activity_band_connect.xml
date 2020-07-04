@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context=".BandConnectActivity">
+
+    <GridLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:columnCount="2">
+
+        <TextView
+            android:id="@+id/status_tv"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_columnSpan="2"
+            android:layout_columnWeight="2"
+            android:text="@string/status0"
+            android:textAlignment="center"
+            android:textSize="24dp" />
+
+        <ToggleButton
+            android:id="@+id/scan_btn"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_columnSpan="1"
+            android:layout_columnWeight="1"
+            android:textOff="@string/start_scan"
+            android:textOn="@string/stop_scan" />
+
+
+        <ToggleButton
+            android:id="@+id/connect_btn"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_columnSpan="1"
+            android:layout_columnWeight="1"
+            android:alpha="0.2"
+            android:clickable="false"
+            android:textOff="@string/connect_band"
+            android:textOn="@string/disconnect_band"
+            />
+
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_columnSpan="2"
+            android:layout_columnWeight="1"
+            android:textAlignment="center"
+            android:padding="5dp"
+            android:text="If you can't see your device listed here,Scan multiple times or try restarting the app or your phone and try Scanning again"
+            />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_columnSpan="2"
+            android:layout_columnWeight="1"
+            android:textAlignment="center"
+            android:padding="5dp"
+            android:textColor="@android:color/holo_red_light"
+            android:text="If band doesn't vibrate after connecting, Disconenct and try connecting it again"
+            />
+    </GridLayout>
+
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        style="@style/Progress"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:indeterminate="true"
+        android:visibility="invisible" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/scan_rv"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scrollbarStyle="outsideOverlay"
+        android:scrollbars="vertical" />
+</LinearLayout>

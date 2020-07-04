@@ -1,12 +1,16 @@
 package com.example.maptest;
 
 import android.Manifest;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothManager;
 import android.bluetooth.le.ScanResult;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.Icon;
@@ -25,13 +29,16 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.math.MathUtils;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -39,7 +46,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.disposables.CompositeDisposable;
+import io.reactivex.rxjava3.functions.Action;
+import io.reactivex.rxjava3.functions.Consumer;
+import io.reactivex.rxjava3.schedulers.Schedulers;
 import jashgopani.github.io.mibandsdk.MiBand;
+import jashgopani.github.io.mibandsdk.models.CustomVibration;
 
 import static com.example.maptest.Constants.CSV_FILENAME;
 import static com.example.maptest.Constants.DIRECTION_BROADCAST;
@@ -53,10 +66,14 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     private static Context context;
     ToggleButton toggleMonitoringBtn;
-    TextView logtv, statustv,thresholdtv;
+    TextView logtv, statustv,thresholdtv,devicetv;
+    Button gotoConnectBtn;
     SeekBar thresholdSb;
     private int currentThreshold = 5;
     boolean monitoringMode;
+    MiBand miband;
+    private CompositeDisposable disposables;
+
 
     final BroadcastReceiver directionsReceiver = new BroadcastReceiver() {
 
@@ -80,6 +97,7 @@ public class MainActivity extends AppCompatActivity {
                 if (DIRECTION_UNKNOWN.equals(type)) {
                     Log.d(TAG, "onReceive: Intent is DIRECTION_UNKNOWN");
                     newData += "\n";
+                    miband.vibrate(getPatternFromDirection(""));
                 } else if (DIRECTION_KNOWN.equals(type)) {
                     Log.d(TAG, "onReceive: Intent is DIRECTION_KNOWN");
                     String direction = intent.getStringExtra("direction");
@@ -89,10 +107,15 @@ public class MainActivity extends AppCompatActivity {
                         String t = title.substring(0,title.indexOf("-")).trim().toLowerCase();
                         char[] c = t.toCharArray();
                         if(!(c[t.length()-2]=='k')){
-                            distance = Integer.parseInt(t.substring(0,t.length()-2));
+                            try {
+                                distance = Integer.parseInt(t.substring(0,t.length()-2));
+                            }catch(Exception e){
+                                e.printStackTrace();
+                            }
                             if(distance<=currentThreshold){
                                 String msg = direction+" in "+distance+"m";
                                 updateMonitoringService(title,msg);
+                                miband.vibrate(getPatternFromDirection(direction));
                                 Toast.makeText(context, "<< Naviband Vibrates >>", Toast.LENGTH_SHORT).show();
                             }else{
                                 updateMonitoringService(title,"Navigating..");
@@ -111,13 +134,30 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    private Integer[] getPatternFromDirection(String d) {
+        if(Directions.isUturn(d)) return CustomVibration.FROWN;
+        else if(Directions.isLeft(d)) return CustomVibration.LEFT_PULSE;
+        else if(Directions.isRight(d)) return CustomVibration.RIGHT_PULSE;
+        else switch (d) {
+                case Directions.STRAIGHT:
+                    return CustomVibration.DEFAULT;
+                case Directions.ALTERNATE:
+                    return CustomVibration.FROWN;
+                case Directions.ARRIVED:
+                    return CustomVibration.generatePattern("600",",");
+                default:
+                    return CustomVibration.generatePattern("600",",");
+            }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        MiBand miBand = MiBand.getInstance(context);
+        Log.d(TAG, "onCreate: called");
         init();
     }
+
 
     private void init() {
         findViews();
@@ -125,6 +165,29 @@ public class MainActivity extends AppCompatActivity {
         addEventListeners();
         getPermissions();
         setStatustv();
+        checkDeviceCompatibility();
+    }
+
+    //methods used by init
+    private void checkDeviceCompatibility() {
+        //get The bluetooth adapter
+        BluetoothAdapter bluetoothAdapter;
+        BluetoothManager bluetoothManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
+        bluetoothAdapter = bluetoothManager.getAdapter();
+
+        // Use this check to determine whether BLE is supported on the device. Then
+        // you can selectively disable BLE-related features.
+        if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
+            Toast.makeText(this, R.string.ble_not_supported, Toast.LENGTH_SHORT).show();
+            finish();
+        }
+
+        //check bluetooth enabled or not
+        if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled()) {
+            Intent enableBtIntent =
+                    new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(enableBtIntent,1);
+        }
     }
 
     private void initializeVariables() {
@@ -134,6 +197,9 @@ public class MainActivity extends AppCompatActivity {
         //seek bar and its related text view
         thresholdSb.setProgress(currentThreshold);
         thresholdtv.setText(currentThreshold+"m");
+
+        //For miband
+        miband = MiBand.getInstance(MainActivity.this);
     }
 
     private void findViews() {
@@ -142,13 +208,8 @@ public class MainActivity extends AppCompatActivity {
         statustv = findViewById(R.id.statustv);
         thresholdSb = findViewById(R.id.thresholdSeek);
         thresholdtv = findViewById(R.id.thresholdTv);
-    }
-
-    @Override
-    protected void onDestroy() {
-        stopService(new Intent(MainActivity.this,ForegroundService.class));
-        super.onDestroy();
-
+        devicetv = findViewById(R.id.devicetv);
+        gotoConnectBtn = findViewById(R.id.gotoConnectBtn);
     }
 
 
@@ -163,6 +224,7 @@ public class MainActivity extends AppCompatActivity {
                     //monitoring is on
                     startMonitoringService();
                     registerReceiver();
+                    miband.vibrate(CustomVibration.generatePattern("600",","));
                 } else {
                     //monitoring is off
                     statustv.setText(R.string.monitoring_off);
@@ -175,7 +237,8 @@ public class MainActivity extends AppCompatActivity {
         thresholdSb.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                currentThreshold = progress;
+                progress = MathUtils.clamp(progress, 5, 100);
+                currentThreshold = roundTo(progress,5);
                 thresholdtv.setText(currentThreshold+"m");
                 thresholdtv.setTextColor(Color.RED);
             }
@@ -189,6 +252,10 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        gotoConnectBtn.setOnClickListener(v->{
+            goToConnectActivity();
+        });
+
     }
 
     private void setStatustv() {
@@ -196,9 +263,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void getPermissions() {
-        ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 0);
-        ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 0);
-        ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, 0);
+        String permissions[] ={
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_BACKGROUND_LOCATION,
+                Manifest.permission.BLUETOOTH,
+                Manifest.permission.BLUETOOTH_ADMIN,
+                Manifest.permission.READ_EXTERNAL_STORAGE
+        };
+        ActivityCompat.requestPermissions(MainActivity.this, permissions, 0);
 
         //Check for Notification access
         if (Settings.Secure.getString(this.getContentResolver(), "enabled_notification_listeners").contains(getApplicationContext().getPackageName())) {
@@ -209,6 +282,24 @@ public class MainActivity extends AppCompatActivity {
             startActivity(new Intent(
                     "android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"));
         }
+
+
+        verifyBandAvailability();
+    }
+
+    private void verifyBandAvailability() {
+        //if device is null, goto connect activity
+        if(miband.getDevice()==null)goToConnectActivity();
+        else Log.d(TAG, "verifyBandAvailability: "+miband.getDevice());
+    }
+
+    private void goToConnectActivity() {
+        startActivityForResult(new Intent(MainActivity.this,BandConnectActivity.class),69);
+    }
+
+    private int roundTo(int i, int r) {
+        r = Math.max(1,r);
+        return Math.max(r * (Math.round(i / r)),0);
     }
 
     private void startMonitoringService() {
@@ -245,4 +336,69 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG, "unregisterReceiver: DIRECTION_BROADCAST unregistered");
     }
 
+    private void disconnectAndUnpair() {
+        disposables.add(miband.disconnect()
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe((connected)->{
+                    if(!connected){
+                        Toast.makeText(context, "MiBand Disconnected", Toast.LENGTH_SHORT).show();
+                    }
+                }, (e)->{e.printStackTrace();},()->{
+                    Log.d(TAG, "disconnectAndUnpair: Connection Toggle Complete");
+                }));
+    }
+
+    //for test vibrate buttons
+    public void onClick(View v) {
+        try {
+            switch(v.getId()){
+                case R.id.testLeft:
+                    miband.vibrate(getPatternFromDirection(Directions.LEFT));
+                    break;
+                case R.id.testRight:
+                    miband.vibrate(getPatternFromDirection(Directions.RIGHT));
+                    break;
+                case R.id.testStraight:
+                    miband.vibrate(getPatternFromDirection(Directions.STRAIGHT));
+                    break;
+                case R.id.testUturn:
+                    miband.vibrate(getPatternFromDirection(Directions.U_LEFT));
+                    break;
+                case R.id.testAlternate:
+                    miband.vibrate(getPatternFromDirection(Directions.ALTERNATE));
+                    break;
+                case R.id.testArrived:
+                    miband.vibrate(getPatternFromDirection(Directions.ARRIVED));
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        stopService(new Intent(MainActivity.this,ForegroundService.class));
+        Log.d(TAG, "onDestroy: Activity destoryed");
+        disconnectAndUnpair();
+        disposables.clear();
+        super.onDestroy();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if(requestCode==69){//result is from connect activity
+            verifyBandAvailability();
+            if(resultCode==App.DEVICE_CONNECTED){
+                Log.d(TAG, "onActivityResult: Device Connected = "+miband.getDevice());
+                miband.vibrate(CustomVibration.SMILE);
+                devicetv.setText(miband.getDevice().toString());
+            }else if(resultCode == App.DEVICE_DISCONNECTED){
+
+            }else if(resultCode == App.DEVICE_NULL){
+
+            }
+        }
+    }
 }

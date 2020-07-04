@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -233,23 +234,6 @@ public class IconDataset {
         return similarity;
     }
 
-    protected static class Directions{
-        public static final String ARRIVED = "ARRIVED";
-
-        public static final String STRAIGHT = "STRAIGHT";
-
-        public static final String SLIGHT_LEFT = "SLIGHT LEFT";
-        public static final String LEFT = "LEFT";
-        public static final String SHARP_LEFT = "SHARP LEFT";
-        public static final String U_LEFT = "U-LEFT";
-
-        public static final String SLIGHT_RIGHT = "SLIGHT RIGHT";
-        public static final String RIGHT = "RIGHT";
-        public static final String SHARP_RIGHT = "SHARP RIGHT";
-        public static final String U_RIGHT = "U-RIGHT";
-
-        public static final String UNKNOWN = "UNKNOWN";
-        public static final String ALTERNATE = "LR";
-    }
-
 }
+
+

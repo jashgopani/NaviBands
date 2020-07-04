@@ -15,22 +15,40 @@
         android:id="@+id/statustv"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_columnSpan="2"
+        android:layout_columnSpan="1"
         android:layout_columnWeight="1"
         android:text="debug"
         android:textAlignment="center"
-        android:textSize="32dp" />
+        android:textSize="16sp" />
+
+    <TextView
+        android:id="@+id/devicetv"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_columnSpan="1"
+        android:layout_columnWeight="1"
+        android:text="Device Mac"
+        android:textAlignment="center"
+        android:textSize="16sp" />
 
     <ToggleButton
         android:id="@+id/toggleMonitoringBtn"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_columnWeight="1"
-        android:layout_columnSpan="2"
+        android:layout_columnSpan="1"
         android:text="Start Service"
         android:textAlignment="center"
         android:textOff="@string/monitoring_off"
         android:textOn="@string/monitoring_on" />
+    <Button
+        android:id="@+id/gotoConnectBtn"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_columnWeight="1"
+        android:layout_columnSpan="1"
+        android:text="Connect Miband"
+        android:textAlignment="center" />
     <TextView
         android:layout_width="0dp"
         android:layout_height="wrap_content"
@@ -41,8 +59,7 @@
         />
     <SeekBar
         android:id="@+id/thresholdSeek"
-        android:min="2"
-        android:max="20"
+        android:max="100"
         android:progress="5"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
@@ -56,13 +73,13 @@
         android:layout_columnWeight="1"
         android:textAlignment="center"
         android:layout_columnSpan="1"
-        android:textSize="16dp"
+        android:textSize="16sp"
         android:textStyle="bold"
         android:text="@string/threshold"
         />
     <TextView
         android:id="@+id/thresholdTv"
-        android:textSize="24dp"
+        android:textSize="24sp"
         tools:text="5"
         android:layout_gravity="center_vertical"
         android:textColor="#ff0000"
@@ -73,6 +90,70 @@
         android:textAlignment="center"
         android:layout_columnSpan="1"
         />
+
+    <TextView
+        android:layout_columnSpan="2"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_columnWeight="1"
+        android:text="Test Vibrations"
+        android:textAlignment="center"
+        android:paddingTop="8dp"
+        />
+    <Button
+        android:text="Left"
+        android:id="@+id/testLeft"
+        android:layout_width="0dp"
+        android:layout_columnSpan="1"
+        android:layout_columnWeight="1"
+        android:onClick="onClick"
+
+        />
+
+    <Button
+        android:text="Right"
+        android:id="@+id/testRight"
+        android:layout_width="0dp"
+        android:layout_columnSpan="1"
+        android:layout_columnWeight="1"
+        android:onClick="onClick"
+        />
+
+    <Button
+        android:text="Straight"
+        android:id="@+id/testStraight"
+        android:layout_width="0dp"
+        android:layout_columnSpan="1"
+        android:onClick="onClick"
+        android:layout_columnWeight="1"
+        />
+
+    <Button
+        android:text="U-Turn"
+        android:id="@+id/testUturn"
+        android:layout_width="0dp"
+        android:layout_columnSpan="1"
+        android:layout_columnWeight="1"
+        android:onClick="onClick"
+        />
+
+    <Button
+        android:text="Alternate\n(left / Right / Straight)"
+        android:id="@+id/testAlternate"
+        android:layout_width="0dp"
+        android:layout_columnSpan="1"
+        android:onClick="onClick"
+        android:layout_columnWeight="1"
+        />
+    <Button
+        android:text="Arrived / Start / Unknown"
+        android:id="@+id/testArrived"
+        android:layout_width="0dp"
+        android:layout_columnSpan="1"
+        android:layout_columnWeight="1"
+        android:onClick="onClick"
+        />
+
 
     <ScrollView
         android:layout_width="0dp"
