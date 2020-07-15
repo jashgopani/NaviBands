@@ -2,78 +2,62 @@ package com.example.maptest;
 
 import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
-import android.bluetooth.le.ScanResult;
 import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
-import android.graphics.drawable.Drawable;
-import android.graphics.drawable.Icon;
-import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CompoundButton;
-import android.widget.EditText;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.math.MathUtils;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.concurrent.TimeUnit;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
-import io.reactivex.rxjava3.functions.Action;
-import io.reactivex.rxjava3.functions.Consumer;
+import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import jashgopani.github.io.mibandsdk.MiBand;
 import jashgopani.github.io.mibandsdk.models.CustomVibration;
 
-import static com.example.maptest.Constants.CSV_FILENAME;
 import static com.example.maptest.Constants.DIRECTION_BROADCAST;
 import static com.example.maptest.Constants.DIRECTION_KNOWN;
 import static com.example.maptest.Constants.DIRECTION_UNKNOWN;
 import static com.example.maptest.Constants.ICON_NULL;
-import static com.example.maptest.Constants.ENCODED_DATA;
 import static com.example.maptest.Constants.REROUTING;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     private static Context context;
     ToggleButton toggleMonitoringBtn;
-    TextView logtv, statustv,thresholdtv,devicetv;
+    TextView logtv, statustv,thresholdtv, bandMacTv;
+    TextView bandConnectionStatusTv,bandBatteryStatusTv,bandChargingStatusTv;
     Button gotoConnectBtn;
     SeekBar thresholdSb;
     private int currentThreshold = 5;
     boolean monitoringMode;
     MiBand miband;
+    int currentBattery = -1;
+    String chargingStatus;
     private CompositeDisposable disposables;
-
 
     final BroadcastReceiver directionsReceiver = new BroadcastReceiver() {
 
@@ -133,22 +117,8 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     };
+    private Disposable batteryDisposable;
 
-    private Integer[] getPatternFromDirection(String d) {
-        if(Directions.isUturn(d)) return CustomVibration.FROWN;
-        else if(Directions.isLeft(d)) return CustomVibration.LEFT_PULSE;
-        else if(Directions.isRight(d)) return CustomVibration.RIGHT_PULSE;
-        else switch (d) {
-                case Directions.STRAIGHT:
-                    return CustomVibration.DEFAULT;
-                case Directions.ALTERNATE:
-                    return CustomVibration.FROWN;
-                case Directions.ARRIVED:
-                    return CustomVibration.generatePattern("600",",");
-                default:
-                    return CustomVibration.generatePattern("600",",");
-            }
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -208,10 +178,12 @@ public class MainActivity extends AppCompatActivity {
         statustv = findViewById(R.id.statustv);
         thresholdSb = findViewById(R.id.thresholdSeek);
         thresholdtv = findViewById(R.id.thresholdTv);
-        devicetv = findViewById(R.id.devicetv);
         gotoConnectBtn = findViewById(R.id.gotoConnectBtn);
+        bandMacTv = findViewById(R.id.bandMacTv);
+        bandConnectionStatusTv = findViewById(R.id.bandConnectedStatusTv);
+        bandBatteryStatusTv = findViewById(R.id.bandBatteryStatusTv);
+        bandChargingStatusTv = findViewById(R.id.bandChargingStatusTv);
     }
-
 
     private void addEventListeners() {
         toggleMonitoringBtn.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
@@ -289,7 +261,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void verifyBandAvailability() {
         //if device is null, goto connect activity
-        if(miband.getDevice()==null)goToConnectActivity();
+        if(!miband.isPaired())goToConnectActivity();
         else Log.d(TAG, "verifyBandAvailability: "+miband.getDevice());
     }
 
@@ -336,17 +308,64 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG, "unregisterReceiver: DIRECTION_BROADCAST unregistered");
     }
 
+    private Integer[] getPatternFromDirection(String d) {
+        if(Directions.isUturn(d)) return CustomVibration.generatePattern(300,100,4);
+        else if(Directions.isLeft(d)) return CustomVibration.LEFT_PULSE;
+        else if(Directions.isRight(d)) return CustomVibration.RIGHT_PULSE;
+        else switch (d) {
+                case Directions.STRAIGHT:
+                    return new Integer[]{};
+                case Directions.ALTERNATE:
+                    return CustomVibration.FROWN;
+                case Directions.ARRIVED:
+                    return CustomVibration.generatePattern("600",",");
+                default:
+                    return CustomVibration.generatePattern("600",",");
+            }
+    }
+    private void updateBandStats(){
+        boolean paired = miband.isPaired();
+        bandMacTv.setText(miband.getDevice().toString());
+        if(paired){
+            bandConnectionStatusTv.setText(MiBand.getStatus(MiBand.PAIRED));
+            bandMacTv.setTextColor(Color.GREEN);
+            bandBatteryStatusTv.setText(currentBattery==-1?"---":String.valueOf(currentBattery));
+            bandChargingStatusTv.setText(chargingStatus==null?"---":String.valueOf(chargingStatus));
+        }else{
+            bandConnectionStatusTv.setText(MiBand.getStatus(MiBand.DISCONNECTED));
+            bandMacTv.setTextColor(Color.RED);
+            bandBatteryStatusTv.setText("---");
+            bandChargingStatusTv.setText("---");
+        }
+    }
+
+    /**
+     * Retrieve Battery Info and update UI
+     */
+    private void refreshBatteryInfo(boolean onlyOnce){
+        Log.d(TAG, "refreshBatteryInfo: "+miband.isPaired());
+        if(miband.isPaired())
+            batteryDisposable = miband.getBatteryInfo(5, TimeUnit.MINUTES,onlyOnce)
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe(info->{
+                        Log.d(TAG, "refreshBatteryInfo: "+info);
+                        chargingStatus = info.getStatus();
+                        currentBattery = info.getLevel();
+                        updateBandStats();
+                    },err->{
+                        Toast.makeText(context, err.getMessage(), Toast.LENGTH_SHORT).show();
+                        err.printStackTrace();
+                    },()->{
+                        Log.d(TAG, "getBatteryInfo: onComplete");
+                    });
+
+    }
+
     private void disconnectAndUnpair() {
-        disposables.add(miband.disconnect()
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe((connected)->{
-                    if(!connected){
-                        Toast.makeText(context, "MiBand Disconnected", Toast.LENGTH_SHORT).show();
-                    }
-                }, (e)->{e.printStackTrace();},()->{
-                    Log.d(TAG, "disconnectAndUnpair: Connection Toggle Complete");
-                }));
+        currentBattery = -1;
+        batteryDisposable.dispose();
+        miband.disconnect(true);
     }
 
     //for test vibrate buttons
@@ -385,20 +404,21 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
     }
 
+    //to handle results from other activity
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if(requestCode==69){//result is from connect activity
-            verifyBandAvailability();
             if(resultCode==App.DEVICE_CONNECTED){
                 Log.d(TAG, "onActivityResult: Device Connected = "+miband.getDevice());
                 miband.vibrate(CustomVibration.SMILE);
-                devicetv.setText(miband.getDevice().toString());
+                refreshBatteryInfo(true);
             }else if(resultCode == App.DEVICE_DISCONNECTED){
-
+                Log.d(TAG, "onActivityResult: No device connected");
             }else if(resultCode == App.DEVICE_NULL){
-
+                Log.d(TAG, "onActivityResult: No device selected");
             }
+            updateBandStats();
         }
     }
 }

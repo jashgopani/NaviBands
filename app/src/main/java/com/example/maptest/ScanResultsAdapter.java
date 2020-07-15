@@ -61,12 +61,7 @@ public class ScanResultsAdapter extends RecyclerView.Adapter<ScanResultsAdapter.
 
             this.onScannedDeviceListener = onScannedDeviceListener;
 
-            itemView.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    onScannedDeviceListener.onDeviceClick(getAdapterPosition());
-                }
-            });
+            itemView.setOnClickListener(v -> onScannedDeviceListener.onDeviceClick(getAdapterPosition()));
         }
 
     }

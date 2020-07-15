@@ -8,7 +8,6 @@
     <string name="debug_file_failure">File debug operation failed</string>
     <string name="vibrate_distance">Select the min. distance before a turn when band vibrates</string>
     <string name="threshold">Current Threshold distance :</string>
-
     <string name="status0">No device connected</string>
     <string name="stop_scan">Stop Scan</string>
     <string name="start_scan">Find device</string>
@@ -22,4 +21,12 @@
     <string name="vibrate_repeat">Repeat Pattern</string>
     <string name="vibrate_led">LED on/off</string>
     <string name="devc">Developed by jashgopani</string>
+
+    <string name="status_disconnected">DISCONNECTED</string>
+    <string name="status_connected">CONNECTED</string>
+    <string name="status_paired">PAIRED</string>
+    <string name="status_charging">CHARGING</string>
+    <string name="status_discharging">DISCHARGING</string>
+
+
 </resources>

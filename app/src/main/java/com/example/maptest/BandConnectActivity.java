@@ -32,9 +32,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
+import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.functions.Action;
 import io.reactivex.rxjava3.functions.Consumer;
 import io.reactivex.rxjava3.schedulers.Schedulers;
@@ -46,7 +48,7 @@ public class BandConnectActivity extends AppCompatActivity implements ScanResult
 
     private static final long SCAN_PERIOD = 6000;
     private static final int REQUEST_ENABLE_BT = 1;
-    private static String TAG = "MainActivity";
+    private static final String TAG = "BandConnectActivity";
     private Context context = BandConnectActivity.this;
     private BluetoothAdapter bluetoothAdapter;
     private ToggleButton scanBtn, connectBtn;
@@ -153,7 +155,7 @@ public class BandConnectActivity extends AppCompatActivity implements ScanResult
             isScanning = isChecked;
 
             if(isChecked){
-
+                resetAdapterData();
                 //subscribe to scanCallbacks observer
                 disposables.add(miBand.startScan(SCAN_PERIOD)
                         .subscribeOn(Schedulers.io())
@@ -181,6 +183,11 @@ public class BandConnectActivity extends AppCompatActivity implements ScanResult
 
     }
 
+    private void resetAdapterData() {
+        addressHashSet.clear();
+        deviceArrayList.clear();
+        scanResultsAdapter.updateList(deviceArrayList);
+    }
 
 
     private void connectAndPair() {
@@ -198,54 +205,9 @@ public class BandConnectActivity extends AppCompatActivity implements ScanResult
 
     private void disconnectAndUnpair() {
         updateUIControls();
-        statusTv.setText("Disconnecting...");
-        deviceArrayList.clear();
-        scanResultsAdapter.updateList(deviceArrayList);
-        disposables.add(miBand.disconnect()
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(handleConnectionNext(), handleConnectionError(),handleConnectionComplete()));
+        updateStatustv("Disconnecting...");
+        miBand.disconnect(true);
         updateUIControls();
-    }
-
-    private void pair(){
-        Log.d(TAG, "connectAndPair: Connection Complete, Pairing start");
-
-        //start pairing inside onComplete of connect
-        toast("Pairing...");
-        paired = false;
-        statusTv.setText("Pairing...");
-        updateUIControls();
-
-        disposables.add(miBand.pair()
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(
-                        pairResult -> {
-                            //returns void
-                            paired = pairResult;
-                        },
-                        pairError -> {
-                            //pairing failed
-                            paired = false;
-                            toast(pairError.getMessage());
-                            Log.d(TAG, "connectAndPair: Pairing Error : ");
-                            pairError.printStackTrace();
-                            currentDevice = null;
-                        },
-                        () -> {
-                            toast(paired?"Paired Successfully":"Device not Paired");
-                            if(paired){
-                                BluetoothDevice device = miBand.getDevice();
-                                setResult(App.DEVICE_CONNECTED);
-                                Log.d(TAG, "paired to : "+device.toString());
-                                finish();
-                            }
-                            else setResult(App.DEVICE_DISCONNECTED);
-                            updateUIControls();
-                        }
-                )
-        );
     }
 
     //UI related methods
@@ -278,6 +240,10 @@ public class BandConnectActivity extends AppCompatActivity implements ScanResult
             statusTv.setText(currentDevice.getAddress());
             statusTv.setTextColor(Color.BLUE);
         }
+    }
+
+    private void updateStatustv(String statusText){
+        statusTv.setText(statusText);
     }
 
 
@@ -355,13 +321,22 @@ public class BandConnectActivity extends AppCompatActivity implements ScanResult
         };
     }
     /**
-     * Handle onComplete result of connectionSubject
-     * @return Action to be performed. onComplete does emit any value
+     * Handle onNext result of connectionSubject
+     * it emits true when connected and false when disconnected
+     * @return handling result value
      */
-    private Action handleConnectionComplete() {
-        return () -> {
-            //onComplete Method
-            Log.d(TAG, "handleConnectionComplete: "+paired);
+    private Consumer<? super Integer> handleConnectionNext() {
+        return (Consumer<Integer>) result->{
+            //if result is true = connection successful
+            //else disconnect successful
+            Log.d(TAG, "handleConnectionNext: From connectionSubject : "+MiBand.getStatus(result));
+            if(result==MiBand.PAIRED){
+                paired = true;
+                setResult(App.DEVICE_CONNECTED);
+                finish();
+            }else{
+                paired=false;
+            }
             updateUIControls();
         };
     }
@@ -372,27 +347,21 @@ public class BandConnectActivity extends AppCompatActivity implements ScanResult
      */
     private Consumer<? super Throwable> handleConnectionError() {
         return (Consumer<Throwable>)error -> {
+            paired = false;
             toast(error.getMessage());
-            setResult(App.DEVICE_NULL);
             updateUIControls();
         };
     }
 
     /**
-     * Handle onNext result of connectionSubject
-     * it emits true when connected and false when disconnected
-     * @return handling result value
+     * Handle onComplete result of connectionSubject
+     * @return Action to be performed. onComplete does emit any value
      */
-    private Consumer<? super Boolean> handleConnectionNext() {
-        return (Consumer<Boolean>) result->{
-            //if result is true = connection successful
-            //else disconnect successful
-            Log.d(TAG, "handleConnectionNext: "+currentDevice.getAddress()+(result?" Connected":" Disconnected"));
-            if(result){
-                pair();
-            }
-            paired = result;
-
+    private Action handleConnectionComplete() {
+        return () -> {
+            //onComplete Method
+            Log.d(TAG, "handleConnectionComplete: Band Disconnected");
+            paired = false;
             updateUIControls();
         };
     }
