@@ -62,6 +62,7 @@ public class BandConnectActivity extends AppCompatActivity implements ScanResult
     private BluetoothDevice currentDevice;
     private boolean connected,paired;
     private MiBand miBand;
+    int requestCode;
     CompositeDisposable disposables;
 
     @Override
@@ -113,14 +114,14 @@ public class BandConnectActivity extends AppCompatActivity implements ScanResult
     }
 
     private void initializeClassFields() {
+        requestCode = getIntent().getIntExtra("requestCode", -1);
         addressHashSet = new HashSet<>();
         deviceArrayList = new ArrayList<>();
         BluetoothManager bluetoothManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
         bluetoothAdapter = bluetoothManager.getAdapter();
         scanResultsAdapter = new ScanResultsAdapter(deviceArrayList, this);
-        connected = false;
-        paired = false;
         miBand = MiBand.getInstance(context);
+        paired = miBand.isPaired();
         try{
             currentDevice = miBand.getDevice();
             Log.d(TAG, "initializeClassFields: "+currentDevice);
@@ -128,6 +129,12 @@ public class BandConnectActivity extends AppCompatActivity implements ScanResult
             currentDevice = null;
         }
         disposables = new CompositeDisposable();
+        //if band is connected then subscribe to the connection subject to get the live status
+        if(paired)
+        disposables.add(miBand.connect(null)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(handleConnectionNext(), handleConnectionError(),handleConnectionComplete()));
         setResult(App.DEVICE_NULL);
     }
 
@@ -216,15 +223,14 @@ public class BandConnectActivity extends AppCompatActivity implements ScanResult
         progressBar.setVisibility(isScanning ? View.VISIBLE : View.INVISIBLE);
 
         //only toggle the find device button if any device is not connected
-        scanBtn.setClickable(!paired);
+        scanBtn.setClickable(!isScanning && !paired);
         scanBtn.setAlpha(scanBtn.isClickable() ? 1f : 0.2f);
         if(!paired)scanBtn.setChecked(isScanning);
 
-        statusTv.setTextColor(isScanning ? Color.LTGRAY : deviceArrayList.size() > 0 ? Color.GREEN : Color.RED);
-        statusTv.setTextColor(scanBtn.isClickable()?Color.GREEN:Color.RED);
-
+        statusTv.setTextColor(isScanning ? Color.LTGRAY : deviceArrayList.size() > 0 ? Color.BLUE :paired?Color.GREEN:Color.RED);
         connectBtn.setClickable(!isScanning && currentDevice!=null);
         connectBtn.setAlpha(connectBtn.isClickable() ? 1f : 0.2f);
+        connectBtn.setChecked(paired);
 
         String mac = currentDevice==null?"":currentDevice.toString();
         connectBtn.setTextOn("Disconnect "+mac);
@@ -333,6 +339,7 @@ public class BandConnectActivity extends AppCompatActivity implements ScanResult
             if(result==MiBand.PAIRED){
                 paired = true;
                 setResult(App.DEVICE_CONNECTED);
+                if(requestCode!=-1)
                 finish();
             }else{
                 paired=false;
@@ -371,7 +378,6 @@ public class BandConnectActivity extends AppCompatActivity implements ScanResult
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        disposables.clear();
     }
 
 

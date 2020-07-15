@@ -12,7 +12,6 @@
     tools:context=".MainActivity">
 
     <TextView
-        android:layout_marginTop="16dp"
         android:id="@+id/statustv"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
@@ -150,6 +149,40 @@
 
     <TextView
         android:id="@+id/bandChargingStatusTv"
+        android:layout_columnSpan="1"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_columnWeight="1"
+        android:text="@string/status_discharging"
+        android:textAlignment="center"
+        android:paddingTop="8dp"
+        />
+
+    <TextView
+        android:layout_marginTop="16dp"
+        android:layout_columnSpan="2"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_columnWeight="1"
+        android:text="Vibration Setting"
+        android:background="@android:color/holo_green_light"
+        android:textColor="@android:color/white"
+        android:textAlignment="center"
+        />
+
+    <TextView
+        android:layout_columnSpan="1"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_columnWeight="1"
+        android:text="Vibrate only for "
+        android:textAlignment="center"
+        android:paddingTop="8dp"
+        />
+
+
+    <Spinner
+        android:id="@+id/vibrateOnlySpinner"
         android:layout_columnSpan="1"
         android:layout_width="0dp"
         android:layout_height="wrap_content"

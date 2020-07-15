@@ -13,9 +13,12 @@ import android.os.Bundle;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.SeekBar;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
@@ -27,8 +30,6 @@ import androidx.core.content.ContextCompat;
 import androidx.core.math.MathUtils;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
 import java.util.concurrent.TimeUnit;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
@@ -55,9 +56,13 @@ public class MainActivity extends AppCompatActivity {
     private int currentThreshold = 5;
     boolean monitoringMode;
     MiBand miband;
-    int currentBattery = -1;
+    int currentBattery = -1,selectedVibrationMode = 0;
     String chargingStatus;
+    Spinner vibrateSpinner;
+    ArrayAdapter vibrateOnlyAdapter;
     private CompositeDisposable disposables;
+
+    String vibrateModesArray[] ;
 
     final BroadcastReceiver directionsReceiver = new BroadcastReceiver() {
 
@@ -170,6 +175,17 @@ public class MainActivity extends AppCompatActivity {
 
         //For miband
         miband = MiBand.getInstance(MainActivity.this);
+
+        //vibrate mode speaker
+        vibrateModesArray = new String[]{
+                "LEFT + RIGHT",
+                "LEFT ONLY",
+                "RIGHT ONLY"
+        };
+        //setup adapter
+        vibrateOnlyAdapter = new ArrayAdapter(this,android.R.layout.simple_spinner_item,vibrateModesArray);
+        vibrateOnlyAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        vibrateSpinner.setAdapter(vibrateOnlyAdapter);
     }
 
     private void findViews() {
@@ -183,6 +199,7 @@ public class MainActivity extends AppCompatActivity {
         bandConnectionStatusTv = findViewById(R.id.bandConnectedStatusTv);
         bandBatteryStatusTv = findViewById(R.id.bandBatteryStatusTv);
         bandChargingStatusTv = findViewById(R.id.bandChargingStatusTv);
+        vibrateSpinner = findViewById(R.id.vibrateOnlySpinner);
     }
 
     private void addEventListeners() {
@@ -225,7 +242,21 @@ public class MainActivity extends AppCompatActivity {
         });
 
         gotoConnectBtn.setOnClickListener(v->{
-            goToConnectActivity();
+            goToConnectActivity(false);
+        });
+
+        vibrateSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                selectedVibrationMode = position;
+                Toast.makeText(MainActivity.this, "Band will vibrate for "+vibrateModesArray[position], Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                //do nothing
+                Log.d(TAG, "onNothingSelected: Done nothing");
+            }
         });
 
     }
@@ -261,12 +292,14 @@ public class MainActivity extends AppCompatActivity {
 
     private void verifyBandAvailability() {
         //if device is null, goto connect activity
-        if(!miband.isPaired())goToConnectActivity();
+        if(!miband.isPaired())goToConnectActivity(true);
         else Log.d(TAG, "verifyBandAvailability: "+miband.getDevice());
     }
 
-    private void goToConnectActivity() {
-        startActivityForResult(new Intent(MainActivity.this,BandConnectActivity.class),69);
+    private void goToConnectActivity(boolean withResult) {
+        Intent intent = new Intent(MainActivity.this,BandConnectActivity.class);
+        if(!withResult)startActivity(intent);
+        else startActivityForResult(intent.putExtra("requestCode", 69),69);
     }
 
     private int roundTo(int i, int r) {
@@ -309,12 +342,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private Integer[] getPatternFromDirection(String d) {
+        Integer noVibration[] = new Integer[]{};
         if(Directions.isUturn(d)) return CustomVibration.generatePattern(300,100,4);
-        else if(Directions.isLeft(d)) return CustomVibration.LEFT_PULSE;
-        else if(Directions.isRight(d)) return CustomVibration.RIGHT_PULSE;
+        else if(Directions.isLeft(d)) return (selectedVibrationMode!=2)?CustomVibration.LEFT_PULSE:noVibration;
+        else if(Directions.isRight(d)) return (selectedVibrationMode!=1)?CustomVibration.RIGHT_PULSE:noVibration;
         else switch (d) {
                 case Directions.STRAIGHT:
-                    return new Integer[]{};
+                    return noVibration;
                 case Directions.ALTERNATE:
                     return CustomVibration.FROWN;
                 case Directions.ARRIVED:
