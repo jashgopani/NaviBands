@@ -359,8 +359,8 @@ public class MainActivity extends AppCompatActivity {
     }
     private void updateBandStats(){
         boolean paired = miband.isPaired();
-        bandMacTv.setText(miband.getDevice().toString());
         if(paired){
+            bandMacTv.setText(miband.getDevice().toString());
             bandConnectionStatusTv.setText(MiBand.getStatus(MiBand.PAIRED));
             bandMacTv.setTextColor(Color.GREEN);
             bandBatteryStatusTv.setText(currentBattery==-1?"---":String.valueOf(currentBattery));

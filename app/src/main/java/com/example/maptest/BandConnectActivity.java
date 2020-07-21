@@ -384,7 +384,9 @@ public class BandConnectActivity extends AppCompatActivity implements ScanResult
     @Override
     public void onBackPressed() {
         if(miBand.getDevice()==null){
-            toast("You Need To Connect to a device first");
+//            toast("You Need To Connect to a device first");
+            setResult(App.DEVICE_NULL);
+            finish();
         }else{
             setResult(App.DEVICE_CONNECTED);
             finish();
